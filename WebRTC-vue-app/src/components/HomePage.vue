@@ -1,24 +1,34 @@
 <template>
-  <div class="mockup-window border bg-base-300 w-4/5 h-4/5">
-    <div class="flex justify-center px-4 py-16 bg-base-200 h-full bg-gray-700">
-      <div class="flex flex-col gap-8 mt-10">
-        <div class="form-control w-full max-w-xs">
-          <label class="label">
-            <span class="label-text text-white">Nhập tên của bạn</span>
-          </label>
-          <input
-            type="text"
-            placeholder="Type here"
-            class="input input-bordered w-full max-w-xs"
-          />
-        </div>
-        <button class="btn btn-outline btn-warning">Tạo phòng mới</button>
-        <button class="btn btn-outline btn-warning">Tham gia phòng</button>
-      </div>
+  <div class="flex flex-col gap-8 mt-10">
+    <div class="form-control w-full max-w-xs">
+      <input
+        type="text"
+        placeholder="Nhập tên của bạn"
+        class="input input-bordered w-full max-w-xs"
+        v-model="userName"
+      />
     </div>
+    <button class="btn btn-outline btn-warning">Tạo phòng mới</button>
+    <button @click="joinRoom" class="btn btn-outline btn-warning">
+      Tham gia phòng
+    </button>
   </div>
 </template>
 
-<script setup></script>
+<script setup>
+import { ref } from 'vue';
+import { useRouter } from 'vue-router';
+import { useUserStore } from '../store/userStore';
+
+const userName = ref('');
+const userStore = useUserStore();
+const router = useRouter();
+
+const joinRoom = () => {
+  router.push('/room/123');
+  // set user name to store
+  userStore.userName = userName.value || 'No name';
+};
+</script>
 
 <style lang="scss" scoped></style>

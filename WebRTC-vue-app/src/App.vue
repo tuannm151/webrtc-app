@@ -1,10 +1,11 @@
 <script setup>
 import PageWrapper from './components/PageWrapper.vue';
-import HomePage from './components/HomePage.vue';
 </script>
 
 <template>
-  <PageWrapper><HomePage /></PageWrapper>
+  <PageWrapper>
+    <RouterView />
+  </PageWrapper>
 </template>
 
 <style scoped>
