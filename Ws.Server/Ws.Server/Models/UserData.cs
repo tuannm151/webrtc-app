@@ -1,14 +1,13 @@
 ﻿namespace WS.Server.Models
 {
-    public class UserData
+    public class Data
     {
-        public string UserName { get; set; }
+        public string? UserName { get; set; }
 
-        public string? Data { get; set; }
+        public string? sdp { get; set; }
 
-        public UserData()
+        public Data()
         {
-            UserName = "No Name";
         }
     }
 }

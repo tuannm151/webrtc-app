@@ -22,3 +22,4 @@ C:\Users\tuanx\source\repos\Ws.Server\Ws.Server\obj\Debug\net6.0\ref\Ws.Server.d
 C:\Users\tuanx\source\repos\Ws.Server\Ws.Server\bin\Debug\net6.0\WebSocketUtils.dll
 C:\Users\tuanx\source\repos\Ws.Server\Ws.Server\bin\Debug\net6.0\WebSocketUtils.pdb
 C:\Users\tuanx\source\repos\Ws.Server\Ws.Server\obj\Debug\net6.0\WS.Server.csproj.CopyComplete
+C:\Users\tuanx\source\repos\Ws.Server\Ws.Server\bin\Debug\net6.0\Newtonsoft.Json.dll

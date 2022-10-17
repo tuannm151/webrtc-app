@@ -30,7 +30,8 @@
             JoinGroup,
             LeaveGroup,
             Connected,
-            Disconnected
+            Disconnected,
+            Announce
         }
 
     }

@@ -2,9 +2,10 @@
 using System.Text;
 using WebSocketUtils;
 using WebSocketUtils.interfaces;
-using System.Text.Json;
 using WS.Server.Models;
 using WS.Server.Enums;
+using Newtonsoft.Json;
+using WebSocketUtils.Models;
 
 namespace WS.Server
 {
@@ -16,6 +17,7 @@ namespace WS.Server
     public class RTCHandler : WSHandler, IWSHandler
     {
         IWSManager _webSocketManager;
+
         public RTCHandler(IWSManager webSocketManager) : base(webSocketManager)
         {
             _webSocketManager = webSocketManager;
@@ -23,32 +25,32 @@ namespace WS.Server
         public override async Task ReceiveAsync(WebSocket socket, WebSocketReceiveResult result, byte[] buffer)
         {
             var socketId = _webSocketManager.GetId(socket);
-            var message = $"{socketId} said: {Encoding.UTF8.GetString(buffer, 0, result.Count)}";
+            var message = $"{Encoding.UTF8.GetString(buffer, 0, result.Count)}";
             Console.WriteLine(message);
 
-            var wsMessage = JsonSerializer.Deserialize<WSMessage>(Encoding.UTF8.GetString(buffer, 0, result.Count));
-            
+            var wsMessage = JsonConvert.DeserializeObject<WSMessage>(message);
             switch (wsMessage.ActionType)
             {
-                
                 case MessageEnum.ActionType.JoinGroup:
                     var res =  JoinGroup(socket, wsMessage.GroupName, wsMessage.GroupSecret);
                     if (!res) break;
                     var announce = new WSMessage();
                     announce.ActionType = MessageEnum.ActionType.Connected;
                     announce.SourceId = socketId;
-                    announce.UserData = wsMessage.UserData;
-                    await SendMessageAsyncGroup(socket, wsMessage.GroupName, JsonSerializer.Serialize(announce));
+                    announce.Data = wsMessage.Data;
+                    Console.WriteLine($"{socketId} joined room {wsMessage.GroupName}");
+                    await SendMessageAsyncGroup(socket, wsMessage.GroupName, JsonConvert.SerializeObject(announce));
                     return;
                 case MessageEnum.ActionType.LeaveGroup:
                     LeaveGroup(socket);
                     return;
                 case MessageEnum.ActionType.Offer:
                     wsMessage.SourceId = socketId;
-                    _ = SendMessageAsync(wsMessage.DestId, JsonSerializer.Serialize(wsMessage));
+                    _ = SendMessageAsync(wsMessage.DestId, JsonConvert.SerializeObject(wsMessage));
                     return;
                 case MessageEnum.ActionType.Answer:
-                    _ = SendMessageAsync(wsMessage.DestId, JsonSerializer.Serialize(wsMessage));
+                    wsMessage.SourceId = socketId;
+                    _ = SendMessageAsync(wsMessage.DestId, JsonConvert.SerializeObject(wsMessage));
                     return;    
                 default:
                     break;
@@ -62,21 +64,23 @@ namespace WS.Server
             await base.OnConnected(socket);
             var socketId = _webSocketManager.GetId(socket);
             Console.WriteLine($"{socketId} connected");
-            await SendMessageAsync(socket, $"Hello {socketId}");
+            await SendMessageAsync(socket, JsonConvert.SerializeObject(new WSMessage() { ActionType = MessageEnum.ActionType.Announce, Announce = $"Welcome {socketId}" }));
         }
         public override async Task OnDisconnected(WebSocket socket)
         {
             var group = GetGroup(socket);
-            if(group != null)
+            var socketId = _webSocketManager.GetId(socket);
+            if (group != null)
             {
-                await SendMessageAsyncGroup(socket, group.GroupName, JsonSerializer.Serialize(new WSMessage
+                await SendMessageAsyncGroup(socket, group.GroupName, JsonConvert.SerializeObject(new WSMessage
                 {
                     ActionType = MessageEnum.ActionType.Disconnected,
-                    SourceId = _webSocketManager.GetId(socket)
+                    SourceId = socketId
                 }));
                 LeaveGroup(socket);
             }
-            await base.OnDisconnected(socket);
+            Console.WriteLine($"{socketId} disconnected");
+            await _webSocketManager.RemoveSocket(_webSocketManager.GetId(socket)); 
         }
     }
 }

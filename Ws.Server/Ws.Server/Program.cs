@@ -4,8 +4,8 @@ using WS.Server;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
-builder.Services.AddScoped<IWSManager, WSManager>();
-builder.Services.AddScoped<IWSHandler, RTCHandler>();
+builder.Services.AddSingleton<IWSManager, WSManager>();
+builder.Services.AddSingleton<IWSHandler, RTCHandler>();
 
 var app = builder.Build();
 

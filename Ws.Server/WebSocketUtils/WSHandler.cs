@@ -12,13 +12,14 @@ namespace WebSocketUtils
 {
     public abstract class WSHandler : IWSHandler
     {
-        private List<SocketGroup> _group = new List<SocketGroup>();
-     
         private IWSManager _wsConnectionManager { get; set; }
+
+        private ConcurrentDictionary<string,SocketGroup> _group { get; set; }
 
         public WSHandler(IWSManager connectionManager)
         {
             _wsConnectionManager = connectionManager;
+            _group = new ConcurrentDictionary<string, SocketGroup>();
         }
 
         /// <summary>
@@ -82,11 +83,11 @@ namespace WebSocketUtils
         /// <returns></returns>
         public async Task SendMessageAsyncGroup(WebSocket socket, string groupName, string message)
         {
-            var group = _group.FirstOrDefault(x => x.GroupName == groupName);
+            var group = _group.FirstOrDefault(x => x.Key == groupName).Value;
             var senderSocketId = _wsConnectionManager.GetId(socket);
             if (group != null)
             {
-                foreach (var connectionId in group.ConnectionIds)
+                foreach (var connectionId in group.socketIds)
                 {
                     if (connectionId != senderSocketId)
                     {
@@ -103,12 +104,12 @@ namespace WebSocketUtils
         /// <returns></returns>
         public SocketGroup? GetGroup(string groupName)
         {
-            return  _group.FirstOrDefault(p => p.GroupName == groupName);
+            return _group.FirstOrDefault(x => x.Key == groupName).Value;
         }
         public SocketGroup? GetGroup(WebSocket socket)
         {
             var socketId = _wsConnectionManager.GetId(socket);
-            return _group.FirstOrDefault(p => p.ConnectionIds.Contains(socketId));
+            return _group.FirstOrDefault(x => x.Value.socketIds.Contains(socketId)).Value;
         }
         /// <summary>
         /// Thêm socket vào group 
@@ -131,7 +132,7 @@ namespace WebSocketUtils
                 {
                     group.GroupSecret = secret;
                 }
-                _group.Add(group);
+                _group.TryAdd(groupName,group);
             } else if(secret != group.GroupSecret)
             {
                 return false;
@@ -150,14 +151,14 @@ namespace WebSocketUtils
         public Boolean LeaveGroup(WebSocket socket)
         {
             var socketId = _wsConnectionManager.GetId(socket);
-            var group = _group.FirstOrDefault(p => p.ConnectionIds.Contains(socketId));
+            var group = GetGroup(socket);
             if (group != null)
             {
                 group.RemoveConnection(socketId);
 
                 if (group.ConnectionIds.Count == 0)
                 {
-                    _group.Remove(group);
+                    _group.TryRemove(group.GroupName, out _);
                 }
             }
             

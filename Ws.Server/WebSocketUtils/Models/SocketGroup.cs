@@ -19,12 +19,13 @@ namespace WebSocketUtils.Models
         /// Một list các string bao gồm các socket id
         /// 
         /// </summary>
-        public List<string> ConnectionIds { get; set; }
+        public ConcurrentDictionary<string, int> ConnectionIds { get; set; }
+        public List<string> socketIds { get => ConnectionIds.Keys.ToList(); }
 
         public SocketGroup(string groupName)
         {
             GroupName = groupName;
-            ConnectionIds = new List<string>();
+            ConnectionIds = new ConcurrentDictionary<string, int>();
         }
         /// <summary>
         /// Thêm socket mới vào group
@@ -32,7 +33,7 @@ namespace WebSocketUtils.Models
         /// <param name="connectionId"></param>
         public void AddConnection(string connectionId)
         {
-            ConnectionIds.Add(connectionId);
+            ConnectionIds.TryAdd(connectionId, 1);
         }
         /// <summary>
         /// Xoá socket ra khỏi group
@@ -40,7 +41,7 @@ namespace WebSocketUtils.Models
         /// <param name="connectionId"></param>
         public void RemoveConnection(string connectionId)
         {
-            ConnectionIds.Remove(connectionId);
+            ConnectionIds.TryRemove(connectionId, out _);
         }
     }
 }
