@@ -1,9 +1,6 @@
 export class WebsocketClient {
   constructor(connectionUrl) {
     this.socket = new WebSocket(connectionUrl);
-    this.socket.onopen = () => {
-      console.log('Websocket connection established');
-    };
     this.socket.onclose = () => {
       console.log('Websocket connection closed');
     };
@@ -23,7 +20,7 @@ export class WebsocketClient {
       ActionType: 'JoinGroup',
       GroupName: socketGroupName,
       GroupSecret: secret,
-      UserData: data,
+      Data: JSON.stringify(data),
     });
   }
 }

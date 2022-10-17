@@ -1,4 +1,3 @@
-/* eslint-env node */
 <template>
   <div></div>
 </template>
@@ -19,11 +18,13 @@ const initConn = () => {
   const secret = route.query.key;
   // lấy userName từ store
   const { userName } = store;
-
-  const webRTCconn = new WebRTCConnection();
-  webRTCconn.joinRoom(roomId, secret, {
+  console.log(import.meta.env);
+  const webRTCconn = new WebRTCConnection(import.meta.env.VITE_CONNECTION_URL, {
     userName,
   });
+  webRTCconn.onConnected = () => {
+    webRTCconn.joinRoom(roomId, secret);
+  };
 };
 
 // const initConnection = () => {

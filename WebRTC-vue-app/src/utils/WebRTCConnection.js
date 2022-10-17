@@ -1,42 +1,53 @@
 import { WebsocketClient } from './websocket-client';
 
 export default class WebRTCConnection extends WebsocketClient {
-  constructor(connectionUrl) {
+  constructor(connectionUrl, userData) {
     super(connectionUrl);
     this.pc = new RTCPeerConnection();
-    this.socket.onmessage = (message) => {
-      const wsMessage = JSON.parse(message.data);
-      console.log(wsMessage);
-      if (wsMessage.ActionType === 'Offer') {
-        this.pc.setRemoteDescription(wsMessage.UserData.data);
-        this._sendAnswer(wsMessage.SourceId, wsMessage);
-      }
-      if (wsMessage.ActionType === 'Answer') {
-        this.pc.setRemoteDescription(wsMessage.UserData.data);
-      }
-      if (wsMessage.ActionType === 'Connected') {
-        this._sendOffer(
-          wsMessage.SourceId,
-          wsMessage.DestId,
-          wsMessage.UserData
-        );
-      }
-      if (wsMessage.ActionType === 'Disconnected') {
-        console.log(`Disconnected from ${wsMessage.SourceId}`);
+    this.userData = userData;
+
+    this.socket.onopen = () => {
+      if (super.isConnected()) {
+        this.onConnected();
+        this.socket.onmessage = (message) => {
+          const wsMessage = JSON.parse(message.data);
+          const data = JSON.parse(wsMessage.Data);
+
+          if (wsMessage.ActionType === 'Offer') {
+            console.log(`Received offer from ${data.userName}`);
+            this.pc.setRemoteDescription(data.sdp);
+            this._sendAnswer(wsMessage.SourceId, userData);
+          }
+          if (wsMessage.ActionType === 'Answer') {
+            console.log(`Received answer from ${data.userName}`);
+            this.pc.setRemoteDescription(data.sdp);
+          }
+          if (wsMessage.ActionType === 'Connected') {
+            console.log(`${data.userName} joined the room`);
+            this._sendOffer(wsMessage.SourceId, userData);
+          }
+          if (wsMessage.ActionType === 'Disconnected') {
+            console.log(`Disconnected from ${wsMessage.SourceId}`);
+          }
+          console.log(data);
+        };
       }
     };
   }
-  joinRoom(roomName, secret, data) {
-    this.join(roomName, secret, data);
+  onConnected() {}
+  joinRoom(roomName, secret) {
+    this.join(roomName, secret, this.userData);
   }
-  _sendOffer(sourceId, destId, data) {
+  _sendOffer(destId, data) {
     this.pc.createOffer().then((offer) => {
       this.pc.setLocalDescription(offer);
       this.send({
         ActionType: 'Offer',
         DestId: destId,
-        UserData: data,
-        SourceId: sourceId,
+        Data: JSON.stringify({
+          ...data,
+          sdp: offer,
+        }),
       });
     });
   }
@@ -46,7 +57,10 @@ export default class WebRTCConnection extends WebsocketClient {
       this.send({
         ActionType: 'Answer',
         DestId: destId,
-        UserData: data,
+        Data: JSON.stringify({
+          ...data,
+          sdp: answer,
+        }),
       });
     });
   }
