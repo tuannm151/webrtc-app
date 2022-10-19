@@ -1,89 +1,130 @@
 <template>
-  <div></div>
+  <div class="flex gap-10">
+    <div class="flex flex-col gap-10">
+      <video ref="webcamVideo" muted="muted" autoplay playsinline></video>
+    </div>
+    <div class="flex flex-col gap-10">
+      <video
+        v-for="stream in remoteStreams"
+        :key="stream.id"
+        autoplay
+        playsinline
+        :src-object.prop.camel="stream"
+      ></video>
+    </div>
+    <button class="btn btn-outline btn-warning" @click="onStartCall">
+      Bắt đầu gọi
+    </button>
+  </div>
 </template>
 
 <script setup>
 import { useUserStore } from '../store/userStore';
-import { onMounted } from 'vue';
+import { onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
+
+import { WebsocketClient } from '../utils/websocket-client';
 import WebRTCConnection from '../utils/WebRTCConnection';
 
 const route = useRoute();
-
 const store = useUserStore();
+const webcamVideo = ref(null);
+const remoteStreams = ref([]);
+const wsConn = ref(null);
+// lấy userName từ store
+const { userName } = store;
 
-const initConn = () => {
+const onStartCall = async () => {
+  // initWebRTCConnection();
+};
+
+const initConnection = async () => {
+  const configuration = {
+    iceServers: [
+      {
+        urls: 'stun:openrelay.metered.ca:80',
+      },
+      {
+        urls: 'turn:openrelay.metered.ca:80',
+        username: 'openrelayproject',
+        credential: 'openrelayproject',
+      },
+      {
+        urls: 'turn:openrelay.metered.ca:443',
+        username: 'openrelayproject',
+        credential: 'openrelayproject',
+      },
+      {
+        urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+        username: 'openrelayproject',
+        credential: 'openrelayproject',
+      },
+    ],
+  };
+  const pc = new RTCPeerConnection(configuration);
+
+  try {
+    const streamId = [];
+    const localStream = await openCamera(600, 600);
+
+    localStream.getTracks().forEach((track) => {
+      pc.addTrack(track, localStream);
+    });
+    webcamVideo.value.srcObject = localStream;
+    pc.ontrack = (event) => {
+      const stream = event.streams[0];
+      if (event.track.kind === 'video') {
+        remoteStreams.value.push(stream);
+      }
+      console.log(remoteStreams.value);
+    };
+  } catch (error) {
+    console.log(error);
+  }
+
   // lấy roomId và secret từ url
   const roomId = route.params.roomId;
   const secret = route.query.key;
-  // lấy userName từ store
-  const { userName } = store;
-  console.log(import.meta.env);
-  const webRTCconn = new WebRTCConnection(import.meta.env.VITE_CONNECTION_URL, {
-    userName,
-  });
-  webRTCconn.onConnected = () => {
-    webRTCconn.joinRoom(roomId, secret);
+
+  const wsClient = new WebsocketClient(import.meta.env.VITE_CONNECTION_URL);
+  wsClient.onConnected = () => {
+    wsClient.join(roomId, secret, {
+      userName,
+    });
   };
+  wsClient.on('Announce', (message) => {
+    console.log('Announce', message.Announce);
+  });
+  wsClient.on('Connected', (_, data) => {
+    console.log('Connected', `${data.userName} joined`);
+  });
+  wsClient.on('Disconnected', () => {
+    console.log('Disconnected', `user left`);
+  });
+  wsClient.on('Joined', () => {
+    const webRTCConn = new WebRTCConnection(pc, wsClient, {
+      userName,
+    });
+    webRTCConn.connectRTC();
+  });
+  wsConn.value = wsClient;
 };
 
-// const initConnection = () => {
-//   // // join socket room
-//   // const socket = io('http://localhost:3000');
-//   // socket.emit('join-room', roomId, userName);
-//   // socket.on('connect', () => {
-//   //   console.log(socket.connected ? 'connected' : 'not connected');
-//   // });
-//   // const configuration = {
-//   //   iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
-//   // };
-//   // const pc = new RTCPeerConnection(configuration);
-//   // // listen khi có user mới join room
-//   // socket.on('user-connected', (data) => {
-//   //   console.log(data.msg);
-//   //   // tạo offer và gửi cho user mới
-//   //   pc.createOffer()
-//   //     .then((offer) => {
-//   //       pc.setLocalDescription(offer);
-//   //       socket.emit('offer', offer, {
-//   //         source: socket.id,
-//   //         dest: data.source,
-//   //       });
-//   //     })
-//   //     .catch((err) => console.log(`Có lỗi khi khởi tạo kết nối P2P: ${err}`));
-//   // });
-//   // // nhận offer từ các user trong room
-//   // socket.on('offer', (offer, data) => {
-//   //   console.log(`Nhận được một SDP offer: ${JSON.stringify(offer)}`);
-//   //   pc.setRemoteDescription(offer);
-//   //   // tạo answer và gửi lại cho user gửi offer
-//   //   pc.createAnswer()
-//   //     .then((answer) => {
-//   //       pc.setLocalDescription(answer);
-//   //       socket.emit('answer', answer, {
-//   //         source: socket.id,
-//   //         dest: data.source,
-//   //       });
-//   //     })
-//   //     .catch((err) => console.log(`Có lỗi khi tạo SDP answer: ${err}`));
-//   // });
-//   // // set remote description để tạo kết nối P2P
-//   // socket.on('answer', (answer) => {
-//   //   console.log(
-//   //     `Nhận được một SDP answer: ${JSON.stringify(
-//   //       answer
-//   //     )}. Khởi tạo kết nối thành công`
-//   //   );
-//   //   pc.setRemoteDescription(answer);
-//   // });
-//   // // listen khi có user rời room
-//   // socket.on('user-disconnected', (data) => {
-//   //   console.log(data.msg);
-//   // });
-// };
+async function openCamera(minWidth, minHeight) {
+  const constraints = {
+    audio: { echoCancellation: true },
+    video: {
+      width: { min: minWidth },
+      height: { min: minHeight },
+    },
+  };
+
+  return await navigator.mediaDevices.getUserMedia(constraints);
+}
 
 onMounted(() => {
-  initConn();
+  // initStream();
+  initConnection();
 });
 </script>
 
