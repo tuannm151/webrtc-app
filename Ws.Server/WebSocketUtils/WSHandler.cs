@@ -50,6 +50,7 @@ namespace WebSocketUtils
         /// <returns></returns>
         public async Task SendMessageAsync(WebSocket socket, string message)
         {
+            if (socket == null) return;
             if (socket.State != WebSocketState.Open)
                 return;
 
@@ -72,7 +73,7 @@ namespace WebSocketUtils
             await SendMessageAsync(_wsConnectionManager.GetSocketById(id), message);
         }
 
-        public abstract Task ReceiveAsync(WebSocket socket, WebSocketReceiveResult result, byte[] buffer);
+        public abstract Task HandleMessage(WebSocket socket, string message);
 
         /// <summary>
         /// Gửi message đến từng nhóm socket

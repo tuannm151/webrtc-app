@@ -17,6 +17,6 @@ namespace WebSocketUtils.interfaces
         Task SendMessageAsync(WebSocket socket, string message);
         Task SendMessageAsyncGroup(WebSocket socket,string groupName, string message);
         Task SendMessageAsync(string id, string message);
-        Task ReceiveAsync(WebSocket socket, WebSocketReceiveResult result, byte[] buffer);
+        Task HandleMessage(WebSocket socket, string message);
     }
 }

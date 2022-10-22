@@ -29,9 +29,11 @@ namespace WebSocketUtils
 
         public async Task RemoveSocket(string id)
         {
+            if (id == null) return;
              _sockets.TryRemove(id, out WebSocket socket);
 
-            
+            if (socket.State != WebSocketState.Open) return;
+
             await socket.CloseAsync(closeStatus: WebSocketCloseStatus.NormalClosure,
                                     statusDescription: "Closed by the WebSocketManager",
                                     cancellationToken: System.Threading.CancellationToken.None);

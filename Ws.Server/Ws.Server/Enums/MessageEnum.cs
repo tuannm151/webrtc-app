@@ -31,7 +31,11 @@
             LeaveGroup,
             Connected,
             Disconnected,
-            Announce
+            Announce,
+            ConnectRTC,
+            Joined,
+            IceCandidate,
+            Heartbeat
         }
 
     }
