@@ -165,5 +165,15 @@ namespace WebSocketUtils
             
             return true;
         }
+
+        public List<string> GetGroupSocketIds(string groupName)
+        {
+            var group = GetGroup(groupName);
+            if (group != null)
+            {
+                return group.GetConnectionIds();
+            }
+            return new List<string>();
+        }
     }
 }

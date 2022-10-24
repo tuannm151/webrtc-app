@@ -35,17 +35,26 @@ namespace WS.Server
                     var res =  JoinGroup(socket, wsMessage.GroupName, wsMessage.GroupSecret);
                     if (!res) break;
 
-                    // send announce to other sockets
-                    var announce = new WSMessage();
-                    announce.ActionType = MessageEnum.ActionType.Connected;
-                    announce.SourceId = socketId;
-                    announce.Data = wsMessage.Data;
-                    Console.WriteLine($"{socketId} joined room {wsMessage.GroupName}");
-                    await SendMessageAsyncGroup(socket, wsMessage.GroupName, JsonConvert.SerializeObject(announce));
+                    
+                    var socketIds = GetGroupSocketIds(wsMessage.GroupName);
+                    var announceClient = new WSMessage
+                    {
+                        // send back to client to signal joined successfully
+                        ActionType = MessageEnum.ActionType.Joined,
+                        Data = JsonConvert.SerializeObject(socketIds)
+                    };
+                    _ = SendMessageAsync(socket, JsonConvert.SerializeObject(announceClient));
 
-                    /*// send back to client to signal joined successfully
-                    announce.ActionType = MessageEnum.ActionType.Joined;
-                    await SendMessageAsync(socket, JsonConvert.SerializeObject(announce));*/
+                    // send announce to other clients
+                    var announceGroup = new WSMessage
+                    {
+                        ActionType = MessageEnum.ActionType.Connected,
+                        SourceId = socketId,
+                        Data = wsMessage.Data
+                    };
+            
+                    Console.WriteLine($"{socketId} joined room {wsMessage.GroupName}");
+                    _ = SendMessageAsyncGroup(socket, wsMessage.GroupName, JsonConvert.SerializeObject(announceGroup));
 
                     return;
                 case MessageEnum.ActionType.LeaveGroup:
@@ -56,6 +65,10 @@ namespace WS.Server
                     _ = SendMessageAsync(wsMessage.DestId, JsonConvert.SerializeObject(wsMessage));
                     return;
                 case MessageEnum.ActionType.Answer:
+                    wsMessage.SourceId = socketId;
+                    _ = SendMessageAsync(wsMessage.DestId, JsonConvert.SerializeObject(wsMessage));
+                    return;
+                case MessageEnum.ActionType.Negotiate:
                     wsMessage.SourceId = socketId;
                     _ = SendMessageAsync(wsMessage.DestId, JsonConvert.SerializeObject(wsMessage));
                     return;

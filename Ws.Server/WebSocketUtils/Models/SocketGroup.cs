@@ -43,5 +43,9 @@ namespace WebSocketUtils.Models
         {
             ConnectionIds.TryRemove(connectionId, out _);
         }
+        public List<string> GetConnectionIds()
+        {
+            return ConnectionIds.Keys.ToList();
+        }
     }
 }

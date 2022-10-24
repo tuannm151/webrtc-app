@@ -18,5 +18,7 @@ namespace WebSocketUtils.interfaces
         Task SendMessageAsyncGroup(WebSocket socket,string groupName, string message);
         Task SendMessageAsync(string id, string message);
         Task HandleMessage(WebSocket socket, string message);
+
+        List<String> GetGroupSocketIds(string groupName);
     }
 }

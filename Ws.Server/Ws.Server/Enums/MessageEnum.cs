@@ -35,7 +35,8 @@
             ConnectRTC,
             Joined,
             IceCandidate,
-            Heartbeat
+            Heartbeat,
+            Negotiate
         }
 
     }
