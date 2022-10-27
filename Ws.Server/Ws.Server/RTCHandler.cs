@@ -37,10 +37,12 @@ namespace WS.Server
 
                     
                     var socketIds = GetGroupSocketIds(wsMessage.GroupName);
+                    socketIds.Remove(socketId);
                     var announceClient = new WSMessage
                     {
                         // send back to client to signal joined successfully
                         ActionType = MessageEnum.ActionType.Joined,
+                        SourceId = socketId,
                         Data = JsonConvert.SerializeObject(socketIds)
                     };
                     _ = SendMessageAsync(socket, JsonConvert.SerializeObject(announceClient));
