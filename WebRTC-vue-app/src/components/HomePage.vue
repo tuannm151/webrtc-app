@@ -20,14 +20,20 @@ import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useUserStore } from '../store/userStore';
 
-const userName = ref('');
+const userName = ref(localStorage.getItem('UserName') || '');
 const userStore = useUserStore();
 const router = useRouter();
 
 const joinRoom = () => {
-  router.push('/room/123');
-  // set user name to store
-  userStore.userName = userName.value || 'No name';
+  try {
+    router.push('/room/123');
+    // set user name to store
+    userStore.userName = userName.value || 'No name';
+    // set user name to local storage
+    localStorage.setItem('UserName', userName.value);
+  } catch (error) {
+    console.log(error);
+  }
 };
 </script>
 

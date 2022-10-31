@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
 export const useUserStore = defineStore('user', () => {
-  const userName = ref('No name');
+  // get name from local storage
+  const userName = ref(localStorage.getItem('UserName') || 'No name');
   return { userName };
 });

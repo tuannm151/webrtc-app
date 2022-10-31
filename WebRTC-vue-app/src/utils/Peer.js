@@ -22,24 +22,74 @@ const configuration = {
 };
 
 export default class Peer {
-  constructor(wsConn, { destId, polite, localStream }) {
+  constructor(wsConn, { destId, polite, newChannel }) {
     this.pc = new RTCPeerConnection(configuration);
     this.makingOffer = false;
-    this.ignoreOffer = false;
-    this.destId = destId;
+    this.id = destId;
     this.polite = polite;
     this.wsConn = wsConn;
+    this.dc = null;
+    this.audioOn = false;
+    this.videoOn = false;
 
-    if (localStream) {
-      console.log('Adding local stream...');
-      localStream.getTracks().forEach((track) => {
-        this.pc.addTrack(track, localStream);
-      });
+    if (newChannel) {
+      this.dc = this.pc.createDataChannel('chat');
+      this.dc.onopen = () => {
+        this.onChannelOpen();
+      };
+      this.dc.onmessage = (event) => {
+        const message = JSON.parse(event.data);
+        console.log(message);
+        const { type, data } = message;
+        if (type === 'connection') {
+          this.onMessage(data);
+        } else if (type === 'action-media') {
+          if (data.type === 'audio') {
+            this.audioOn = data.active;
+          }
+          if (data.type === 'video') {
+            this.videoOn = data.active;
+          }
+          this.onMediaStateChange(data);
+        }
+      };
     }
 
+    this.pc.ondatachannel = (event) => {
+      this.dc = event.channel;
+      this.dc.onopen = () => {
+        this.onChannelOpen();
+      };
+      this.dc.onmessage = (event) => {
+        const message = JSON.parse(event.data);
+        console.log(message);
+        const { type, data } = message;
+        if (type === 'connection') {
+          this.onMessage(data);
+        } else if (type === 'action-media') {
+          if (data.type === 'audio') {
+            this.audioOn = data.active;
+          }
+          if (data.type === 'video') {
+            this.videoOn = data.active;
+          }
+          this.onMediaStateChange(data);
+        }
+      };
+    };
+
     this.pc.ontrack = (event) => {
+      if (event.track.kind === 'audio') {
+        this.audioOn = true;
+      }
+      if (event.track.kind === 'video') {
+        this.videoOn = true;
+      }
       const [stream] = event.streams;
-      this.gotStream(stream);
+      this.gotStream({
+        stream,
+        trackType: event.track.kind,
+      });
     };
 
     this.pc.onnegotiationneeded = async () => {
@@ -51,11 +101,7 @@ export default class Peer {
         this.makingOffer = true;
         await this.pc.setLocalDescription();
         console.log(`Sending sdp on negotiation needed`);
-        wsConn.send({
-          ActionType: 'Negotiate',
-          DestId: destId,
-          Data: JSON.stringify({ sdp: this.pc.localDescription }),
-        });
+        this._sendConnectionData({ sdp: this.pc.localDescription });
       } catch (err) {
         console.error(err);
       } finally {
@@ -64,11 +110,8 @@ export default class Peer {
     };
     this.pc.onicecandidate = (event) => {
       console.log('Sending candidate');
-      this.wsConn.send({
-        ActionType: 'Negotiate',
-        DestId: destId,
-        Data: JSON.stringify({ candidate: event.candidate }),
-      });
+
+      this._sendConnectionData({ candidate: event.candidate });
     };
     this.pc.oniceconnectionstatechange = () => {
       if (this.pc.iceConnectionState === 'failed') {
@@ -78,17 +121,21 @@ export default class Peer {
     };
     // if (this.polite) {
     //   console.log('Initiating negotiation');
-    //   this._sendOffer(destId);
+    //   this._sendOffer(id);
     // }
   }
+
+  onMediaStateChange() {}
+
+  onChannelOpen() {}
   onMessage = async ({ sdp, candidate }) => {
     try {
       if (sdp) {
         const offerCollision =
           sdp.type === 'offer' &&
           (this.makingOffer || this.pc.signalingState !== 'stable');
-        this.ignoreOffer = !this.polite && offerCollision;
-        if (this.ignoreOffer) {
+        const ignoreOffer = !this.polite && offerCollision;
+        if (ignoreOffer) {
           console.log('Ignoring offer');
           return;
         }
@@ -97,11 +144,7 @@ export default class Peer {
         if (sdp.type === 'offer') {
           await this.pc.setLocalDescription();
           console.log(`Sending sdp: ${this.pc.localDescription.type}`);
-          this.wsConn.send({
-            ActionType: 'Negotiate',
-            DestId: this.destId,
-            Data: JSON.stringify({ sdp: this.pc.localDescription }),
-          });
+          this._sendConnectionData({ sdp: this.pc.localDescription });
         }
       } else if (candidate) {
         try {
@@ -120,6 +163,25 @@ export default class Peer {
   close() {
     this.pc.close();
   }
+
+  _sendConnectionData = (data) => {
+    if (this.dc && this.dc.readyState === 'open') {
+      this.dc.send(JSON.stringify({ type: 'connection', data }));
+    } else {
+      this.wsConn.send({
+        ActionType: 'Negotiate',
+        DestId: this.id,
+        Data: JSON.stringify(data),
+      });
+    }
+  };
+
+  sendMessageChannel = (message) => {
+    if (this.dc && this.dc.readyState === 'open') {
+      this.dc.send(JSON.stringify(message));
+    }
+  };
+
   startStream = async (localStream) => {
     localStream.getTracks().forEach((track) => {
       this.pc.addTrack(track, localStream);
