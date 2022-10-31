@@ -210,8 +210,10 @@ const toggleCamera = async () => {
       deviceId: mediaStore.videoInputDevice,
     },
   });
+  if (localVideo.value.srcObject) {
+    localVideo.value.srcObject = stream;
+  }
 
-  localVideo.value.srcObject = stream;
   videoStream.value = stream;
   isCameraOn.value = true;
 };
@@ -233,7 +235,9 @@ const toggleMicrophone = async () => {
     },
   });
   audioStream.value = stream;
-  localAudio.value.srcObject = stream;
+  if (localAudio.value.srcObject) {
+    localAudio.value.srcObject = stream;
+  }
   isMicrophoneOn.value = true;
   visualizeAudioStream();
 };
@@ -287,12 +291,12 @@ const initDevices = async () => {
     if (audioOutputs.value.length > 0) {
       mediaStore.audioOutputDevice = audioOutputs.value[0].value;
     }
-    if (videoInputs.value.length > 0) {
-      toggleCamera();
-    }
-    if (audioInputs.value.length > 0) {
-      toggleMicrophone();
-    }
+    // if (videoInputs.value.length > 0) {
+    //   toggleCamera();
+    // }
+    // if (audioInputs.value.length > 0) {
+    //   toggleMicrophone();
+    // }
   } catch (error) {
     console.log(error);
   } finally {

@@ -62,11 +62,15 @@ const userStore = useUserStore();
 const { audioInputDevice, videoInputDevice, audioOutputDevice } =
   useMediaStore();
 const peers = ref([]);
-const { userName } = userStore;
+const { userName: UserName } = userStore;
 const wsConn = reactive(
   new WebsocketClient(import.meta.env.VITE_CONNECTION_URL)
 );
-const pcManager = reactive(new PeerConnectionManager(wsConn));
+const pcManager = reactive(
+  new PeerConnectionManager(wsConn, {
+    UserName,
+  })
+);
 const isCameraOn = ref(false);
 const isMicrophoneOn = ref(false);
 const localStream = ref(null);
@@ -187,7 +191,7 @@ const initConn = async () => {
 
   wsConn.onConnected = () => {
     wsConn.join(roomId, secret, {
-      UserName: userName,
+      UserName,
     });
   };
   wsConn.on('Announce', (message) => {

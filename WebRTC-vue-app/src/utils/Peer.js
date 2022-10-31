@@ -22,17 +22,18 @@ const configuration = {
 };
 
 export default class Peer {
-  constructor(wsConn, { destId, polite, newChannel }) {
+  constructor(wsConn, { destId, isSender, clientData }) {
     this.pc = new RTCPeerConnection(configuration);
     this.makingOffer = false;
     this.id = destId;
-    this.polite = polite;
+    this.polite = isSender;
     this.wsConn = wsConn;
     this.dc = null;
     this.audioOn = false;
     this.videoOn = false;
+    this.clientData = clientData;
 
-    if (newChannel) {
+    if (isSender) {
       this.dc = this.pc.createDataChannel('chat');
       this.dc.onopen = () => {
         this.onChannelOpen();
@@ -42,7 +43,7 @@ export default class Peer {
         console.log(message);
         const { type, data } = message;
         if (type === 'connection') {
-          this.onMessage(data);
+          this.gotMessage(data);
         } else if (type === 'action-media') {
           if (data.type === 'audio') {
             this.audioOn = data.active;
@@ -65,7 +66,7 @@ export default class Peer {
         console.log(message);
         const { type, data } = message;
         if (type === 'connection') {
-          this.onMessage(data);
+          this.gotMessage(data);
         } else if (type === 'action-media') {
           if (data.type === 'audio') {
             this.audioOn = data.active;
@@ -128,7 +129,11 @@ export default class Peer {
   onMediaStateChange() {}
 
   onChannelOpen() {}
-  onMessage = async ({ sdp, candidate }) => {
+
+  isChannelOpen() {
+    return this.dc && this.dc.readyState === 'open';
+  }
+  gotMessage = async ({ sdp, candidate }) => {
     try {
       if (sdp) {
         const offerCollision =
@@ -171,7 +176,10 @@ export default class Peer {
       this.wsConn.send({
         ActionType: 'Negotiate',
         DestId: this.id,
-        Data: JSON.stringify(data),
+        Data: JSON.stringify({
+          ...data,
+          clientData: this.clientData,
+        }),
       });
     }
   };

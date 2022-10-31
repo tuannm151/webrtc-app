@@ -1,12 +1,12 @@
 import Peer from './Peer';
 export default class PeerConnectionManager {
-  constructor(wsConnection, userData) {
+  constructor(wsConnection, clientData) {
     this.connections = {};
     this.wsConn = wsConnection;
     this.localVideoStream = null;
     this.localAudioStream = null;
     this.dc = null;
-    this.userData = userData;
+    this.clientData = clientData;
 
     // khởi tạo một kết nối p2p khi một user kết nối vào room
     this.wsConn.on('Connected', async (message, data) => {
@@ -16,35 +16,52 @@ export default class PeerConnectionManager {
       // await this._initPeers(senderSocketId);
       // gửi offer cho user mới kết nối vào room
 
-      this._initPeer({
+      const peer = this._initPeer({
         socketId: senderSocketId,
-        data,
-        polite: true,
-        newChannel: true,
+        isSender: true,
+        clientData,
       });
+      this.onConnection({ id: senderSocketId, data });
+      this.connections[senderSocketId] = { peer, clientData: data };
       this.onNewClientConnected();
     });
 
     this.wsConn.on('Negotiate', async (message, data) => {
       const senderSocketId = message.SourceId;
-      this.connections[senderSocketId].peer.onMessage(data);
-    });
-
-    this.wsConn.on('Joined', async (message, data) => {
-      const socketDatas = data;
-
-      this.MySocketId = message.SourceId;
-
-      socketDatas.forEach(async (data) => {
-        const { SocketId } = data;
-        this._initPeer({
-          socketId: SocketId,
-          data,
-          polite: false,
-          newChannel: false,
+      const { clientData: remoteClientData } = data;
+      if (!this.connections[senderSocketId]) {
+        const peer = this._initPeer({
+          socketId: senderSocketId,
+          isSender: false,
+          clientData,
         });
-      });
+        this.connections[senderSocketId] = { peer };
+      }
+      if (!this.connections[senderSocketId].clientData) {
+        this.connections[senderSocketId].clientData = remoteClientData;
+        this.onConnection({ id: senderSocketId, data: remoteClientData });
+      }
+      this.connections[senderSocketId].peer.gotMessage(data);
     });
+
+    // this.wsConn.on('Joined', async (message, data) => {
+    //   const socketDatas = data;
+
+    //   this.MySocketId = message.SourceId;
+
+    //   socketDatas.forEach(async (data) => {
+    //     const { SocketId } = data;
+    //     if (this.connections[SocketId]) {
+    //       return;
+    //     }
+    //     this._initPeer({
+    //       socketId: SocketId,
+    //       data,
+    //       polite: false,
+    //       newChannel: false,
+    //     });
+    //   });
+    // });
 
     // khi một user disconnect close peer connection
     this.wsConn.on('Disconnected', (message) => {
@@ -56,7 +73,12 @@ export default class PeerConnectionManager {
       this.onPeerDestroyed(message.SourceId);
     });
   }
-  async onStreamChange() {}
+
+  onStreamChange() {}
+  onConnection = () => {};
+  onPeerStateChange = () => {};
+  onPeerDestroyed = () => {};
+  onNewClientConnected = () => {};
 
   sendToAllChannels = (message) => {
     Object.values(this.connections).forEach(({ peer }) => {
@@ -64,15 +86,11 @@ export default class PeerConnectionManager {
     });
   };
 
-  onConnection = () => {};
-  onPeerStateChange = () => {};
-  onPeerDestroyed = () => {};
-  onNewClientConnected = () => {};
-  _initPeer = async ({ socketId, polite, data, newChannel }) => {
+  _initPeer = ({ socketId, isSender, clientData }) => {
     const peer = new Peer(this.wsConn, {
       destId: socketId,
-      polite,
-      newChannel,
+      isSender,
+      clientData,
     });
     if (this.localAudioStream) {
       peer.startStream(this.localAudioStream);
@@ -80,10 +98,6 @@ export default class PeerConnectionManager {
     if (this.localVideoStream) {
       peer.startStream(this.localVideoStream);
     }
-    this.onConnection({
-      id: socketId,
-      data,
-    });
     peer.gotStream = ({ stream }) => {
       this.onPeerStateChange(socketId, {
         stream,
@@ -102,10 +116,7 @@ export default class PeerConnectionManager {
         audioOn: peer.audioOn,
       });
     };
-    this.connections[socketId] = {
-      peer,
-      data,
-    };
+    return peer;
   };
 
   openLocalMedia = async (data) => {
