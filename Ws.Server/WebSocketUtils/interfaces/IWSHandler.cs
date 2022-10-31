@@ -4,6 +4,7 @@ using System.Linq;
 using System.Net.WebSockets;
 using System.Text;
 using System.Threading.Tasks;
+using WebSocketUtils.Models;
 
 namespace WebSocketUtils.interfaces
 {
@@ -18,7 +19,6 @@ namespace WebSocketUtils.interfaces
         Task SendMessageAsyncGroup(WebSocket socket,string groupName, string message);
         Task SendMessageAsync(string id, string message);
         Task HandleMessage(WebSocket socket, string message);
-
-        List<String> GetGroupSocketIds(string groupName);
+        List<string> GetGroupSocketIds(string groupName);
     }
 }

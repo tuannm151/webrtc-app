@@ -32,20 +32,20 @@ namespace WS.Server
             switch (wsMessage.ActionType)
             {
                 case MessageEnum.ActionType.JoinGroup:
-                    var res =  JoinGroup(socket, wsMessage.GroupName, wsMessage.GroupSecret);
+                    if (String.IsNullOrEmpty(wsMessage.GroupName))
+                    {
+                        return;
+                    }
+                    var res = JoinGroup(socket, wsMessage.GroupName, wsMessage.GroupSecret);
                     if (!res) break;
 
-                    
-                    var socketIds = GetGroupSocketIds(wsMessage.GroupName);
-                    socketIds.Remove(socketId);
-                    var announceClient = new WSMessage
+                    /*var announceClient = new WSMessage
                     {
                         // send back to client to signal joined successfully
                         ActionType = MessageEnum.ActionType.Joined,
                         SourceId = socketId,
-                        Data = JsonConvert.SerializeObject(socketIds)
                     };
-                    _ = SendMessageAsync(socket, JsonConvert.SerializeObject(announceClient));
+                    _ = SendMessageAsync(socket, JsonConvert.SerializeObject(announceClient));*/
 
                     // send announce to other clients
                     var announceGroup = new WSMessage
@@ -62,19 +62,7 @@ namespace WS.Server
                 case MessageEnum.ActionType.LeaveGroup:
                     LeaveGroup(socket);
                     return;
-                case MessageEnum.ActionType.Offer:
-                    wsMessage.SourceId = socketId;
-                    _ = SendMessageAsync(wsMessage.DestId, JsonConvert.SerializeObject(wsMessage));
-                    return;
-                case MessageEnum.ActionType.Answer:
-                    wsMessage.SourceId = socketId;
-                    _ = SendMessageAsync(wsMessage.DestId, JsonConvert.SerializeObject(wsMessage));
-                    return;
                 case MessageEnum.ActionType.Negotiate:
-                    wsMessage.SourceId = socketId;
-                    _ = SendMessageAsync(wsMessage.DestId, JsonConvert.SerializeObject(wsMessage));
-                    return;
-                case MessageEnum.ActionType.IceCandidate:
                     wsMessage.SourceId = socketId;
                     _ = SendMessageAsync(wsMessage.DestId, JsonConvert.SerializeObject(wsMessage));
                     return;
@@ -91,19 +79,25 @@ namespace WS.Server
         }
         public override async Task OnDisconnected(WebSocket socket)
         {
-            var group = GetGroup(socket);
-            var socketId = _webSocketManager.GetId(socket);
-            if (group != null)
+            try
             {
-                await SendMessageAsyncGroup(socket, group.GroupName, JsonConvert.SerializeObject(new WSMessage
+                var group = GetGroup(socket);
+                var socketId = _webSocketManager.GetId(socket);
+                if (group != null)
                 {
-                    ActionType = MessageEnum.ActionType.Disconnected,
-                    SourceId = socketId
-                }));
-                LeaveGroup(socket);
+                    await SendMessageAsyncGroup(socket, group.GroupName, JsonConvert.SerializeObject(new WSMessage
+                    {
+                        ActionType = MessageEnum.ActionType.Disconnected,
+                        SourceId = socketId
+                    }));
+                    LeaveGroup(socket);
+                }
+                Console.WriteLine($"{socketId} disconnected");
+                await _webSocketManager.RemoveSocket(socketId);
+            } catch (Exception e)
+            {
+                Console.WriteLine(e.Message);
             }
-            Console.WriteLine($"{socketId} disconnected");
-            await _webSocketManager.RemoveSocket(socketId); 
             
         }
     }

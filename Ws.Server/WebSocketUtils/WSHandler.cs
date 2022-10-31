@@ -88,7 +88,7 @@ namespace WebSocketUtils
             var senderSocketId = _wsConnectionManager.GetId(socket);
             if (group != null)
             {
-                foreach (var connectionId in group.socketIds)
+                foreach (var connectionId in group.Connections.Keys)
                 {
                     if (connectionId != senderSocketId)
                     {
@@ -110,7 +110,7 @@ namespace WebSocketUtils
         public SocketGroup? GetGroup(WebSocket socket)
         {
             var socketId = _wsConnectionManager.GetId(socket);
-            return _group.FirstOrDefault(x => x.Value.socketIds.Contains(socketId)).Value;
+            return _group.FirstOrDefault(x => x.Value.Connections.Keys.Contains(socketId)).Value;
         }
         /// <summary>
         /// Thêm socket vào group 
@@ -157,7 +157,7 @@ namespace WebSocketUtils
             {
                 group.RemoveConnection(socketId);
 
-                if (group.ConnectionIds.Count == 0)
+                if (group.Connections.Count == 0)
                 {
                     _group.TryRemove(group.GroupName, out _);
                 }

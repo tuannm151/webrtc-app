@@ -1,13 +1,9 @@
 ﻿namespace WS.Server.Models
 {
-    public class Data
+    public class UserData
     {
         public string? UserName { get; set; }
 
-        public string? sdp { get; set; }
-
-        public Data()
-        {
-        }
+        public string? SocketId { get; set; }
     }
 }

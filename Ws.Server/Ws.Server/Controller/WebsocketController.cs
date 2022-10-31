@@ -70,6 +70,7 @@ namespace Ws.Server.Controller
                 }
             } catch (Exception e)
             {
+                Console.WriteLine(e.Message);
                 await _webSocketHandler.OnDisconnected(socket);
                
             }
