@@ -1,143 +1,109 @@
 <template>
-  <div class="w-full h-full relative pb-16 pt-4">
-    <audio ref="localAudio" class="hidden" autoplay></audio>
-    <div
-      ref="videoContainer"
-      :class="['w-full h-full relative', videoContainerClass]"
-    >
-      <VideoBox
-        userName="Bạn"
-        :audioOn="isMicrophoneOn"
-        :videoOn="isCameraOn"
-        :stream="localStream"
-        :width="maxStreamWidth"
-        :aspectRatio="aspectRatio"
-      />
-      <VideoBox
+  <div class="w-full h-full relative flex justify-center items-center">
+    <div>
+      <audio ref="localAudio" class="hidden" autoplay></audio>
+      <audio
         v-for="peer in peers"
-        :key="peer.id"
-        :userName="peer.data.UserName"
-        :audioOn="peer.audioOn"
-        :videoOn="peer.videoOn"
-        :stream="peer.stream"
-        :width="maxStreamWidth"
-        :aspectRatio="aspectRatio"
+        :key="peer.peerId"
+        autoplay
+        class="hidden"
+        :src-object.prop.camel="peer.audioStream"
       />
     </div>
-    <div class="flex gap-6 absolute bottom-2 left-1/2 -translate-x-1/2 mx-auto">
-      <ToggleDeviceBtn
-        iconOn="fa-solid fa-microphone"
-        iconOff="fa-solid fa-microphone-slash"
-        :isOn="isMicrophoneOn"
-        @click="toggleMicrophone"
-        classes="w-12 h-12"
-        size="text-2xl"
+    <SharedDrawer
+      :streams="sharedStreamInfos"
+      :current-stream-id="
+        isGalleryView ? 'gallery' : currentSharedStream?.stream.id || 'gallery'
+      "
+      :blurBackground="showUI"
+      @switch-stream="handleSwitchStream"
+      @stop-share="handleDrawerStopShare"
+    />
+
+    <VideoGrid
+      v-if="isGalleryView"
+      :localStream="localStream"
+      :peers="peers"
+      :isMicrophoneOn="isMicrophoneOn"
+      :isCameraOn="isCameraOn"
+    />
+
+    <StreamBox
+      v-if="!isGalleryView && currentSharedStream"
+      :currentSharedStream="currentSharedStream"
+    />
+    <Transition name="chat">
+      <ChatTab
+        v-if="isChatOpen"
+        :messages="chatMessages"
+        @send-message="handleSendChatMessage"
       />
-      <ToggleDeviceBtn
-        iconOn="fa-solid fa-video"
-        iconOff="fa-solid fa-video-slash"
-        :isOn="isCameraOn"
-        @click="toggleCamera"
-        classes="w-12 h-12"
-        size="text-2xl"
+    </Transition>
+
+    <Transition name="control">
+      <ControlBar
+        v-if="showUI"
+        :isMicrophoneOn="isMicrophoneOn"
+        :isCameraOn="isCameraOn"
+        :isChatOpen="isChatOpen"
+        @toggle-microphone="toggleMicrophone"
+        @toggle-camera="toggleCamera"
+        @toggle-chat="toggleChat"
+        @share-screen="startSharing"
+        @hang-up="handleHangUp"
       />
-    </div>
+    </Transition>
   </div>
 </template>
 
 <script setup>
 import { useUserStore } from '../store/userStore';
 import { useMediaStore } from '../store/mediaStore';
-import { onMounted, reactive, ref } from 'vue';
-import { useRoute } from 'vue-router';
+import { onMounted, onUnmounted, reactive, ref } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import { WebsocketClient } from '../utils/websocket-client';
 import PeerConnectionManager from '../utils/PeerConnectionManager';
-import ToggleDeviceBtn from './ToggleDeviceBtn.vue';
-import VideoBox from './VideoBox.vue';
 import connectedSound from '../assets/connected_sound.mp3';
-import { computed } from 'vue';
+import VideoGrid from './VideoGrid.vue';
+import { useToast } from 'vue-toastification';
+import SharedDrawer from './SharedDrawer.vue';
+import StreamBox from './StreamBox.vue';
+import ChatTab from './Chat/ChatTab.vue';
+import { generateBgColor } from '../utils/stringUtils';
+import ControlBar from './ControlBar.vue';
 
 const route = useRoute();
+const router = useRouter();
+const toastOptions = {
+  showCloseButtonOnHover: true,
+  closeButton: false,
+  timeout: 3000,
+  icon: true,
+  hideProgressBar: true,
+};
 const userStore = useUserStore();
 const { audioInputDevice, videoInputDevice, audioOutputDevice } =
   useMediaStore();
 const peers = ref([]);
-const { userName: UserName } = userStore;
+const chatMessages = ref([]);
+const sharedStreamInfos = ref([]);
+const isGalleryView = ref(true);
+const isChatOpen = ref(false);
+const currentSharedStream = ref(null);
 const wsConn = reactive(
   new WebsocketClient(import.meta.env.VITE_CONNECTION_URL)
 );
-const pcManager = reactive(
-  new PeerConnectionManager(wsConn, {
-    UserName,
-  })
-);
+const { userName: UserName } = userStore;
+const userData = {
+  UserName,
+};
+const pcManager = reactive(new PeerConnectionManager(wsConn, userData));
+const toast = useToast();
 const isCameraOn = ref(false);
 const isMicrophoneOn = ref(false);
 const localStream = ref(null);
 const localAudio = ref(null);
-const videoContainer = ref(null);
-
-const areaFits = ({
-  possibleWidth,
-  streamCount,
-  TotalWidth,
-  TotalHeight,
-  ratio,
-}) => {
-  let totalHeightNeeded;
-
-  const streamsPerRow = Math.floor(TotalWidth / possibleWidth);
-  const rowsNeeded = Math.ceil(streamCount / streamsPerRow);
-  if (rowsNeeded > 0) {
-    totalHeightNeeded = rowsNeeded * possibleWidth * ratio;
-  } else {
-    totalHeightNeeded = possibleWidth * ratio;
-  }
-  return totalHeightNeeded < TotalHeight;
-};
-const aspectRatio = computed(() => {
-  const streamCount = peers.value.length + 1;
-  if (streamCount === 4) return 9 / 16;
-  return 3 / 4;
-});
-
-const maxStreamWidth = computed(() => {
-  if (!videoContainer.value) return 0;
-  const streamCount = peers.value.length + 1;
-
-  if (streamCount === 3) return 'full';
-  let max = 0;
-  // binary search for maximal width in  [50, 5000]
-  for (let lower = 50, upper = 5000; lower < upper; ) {
-    max = Math.floor((upper + lower) / 2);
-    if (max === lower) {
-      break;
-    }
-    if (
-      areaFits({
-        possibleWidth: max,
-        streamCount,
-        TotalWidth: videoContainer.value.offsetWidth,
-        TotalHeight: videoContainer.value.offsetHeight,
-        ratio: aspectRatio.value,
-      })
-    ) {
-      lower = max;
-    } else {
-      upper = max;
-    }
-  }
-  return max;
-});
-
-const videoContainerClass = computed(() => {
-  let flex = 'flex justify-center items-center flex-wrap';
-  const streamCount = peers.value.length + 1;
-  if (streamCount === 3) {
-    return 'flex justify-center items-center';
-  }
-  return flex;
-});
+const showUI = ref(true);
 
 const toggleCamera = async () => {
   try {
@@ -158,17 +124,6 @@ const toggleCamera = async () => {
   }
 };
 
-const playConnectedSound = () => {
-  try {
-    if (!audioOutputDevice) return;
-    localAudio.value.src = connectedSound;
-    localAudio.value.setSinkId(audioOutputDevice);
-    localAudio.value.play();
-  } catch (err) {
-    console.error(err);
-  }
-};
-
 const toggleMicrophone = async () => {
   if (!audioInputDevice) return;
   isMicrophoneOn.value = !isMicrophoneOn.value;
@@ -184,6 +139,155 @@ const toggleMicrophone = async () => {
   localStream.value = newValue;
 };
 
+const toggleChat = () => {
+  isChatOpen.value = !isChatOpen.value;
+};
+
+const startSharing = async () => {
+  try {
+    const stream = await pcManager.startCapture();
+    isGalleryView.value = false;
+    currentSharedStream.value = {
+      stream,
+      data: {
+        UserName: 'bạn',
+      },
+      isLocal: true,
+    };
+    sharedStreamInfos.value.unshift({
+      streamId: stream.id,
+      data: {
+        UserName: 'bạn',
+      },
+      socketId: 'local',
+    });
+  } catch (err) {
+    console.error(err);
+  }
+};
+
+const handleSwitchStream = (data) => {
+  console.log(data);
+  const { socketId, streamId } = data;
+  if (streamId === 'gallery') {
+    isGalleryView.value = true;
+    return;
+  }
+
+  isGalleryView.value = false;
+  if (socketId === 'local') {
+    const stream = pcManager.localShareStream.find(
+      (stream) => stream.id === streamId
+    );
+
+    if (stream) {
+      currentSharedStream.value = {
+        stream,
+        data: {
+          UserName: 'bạn',
+        },
+      };
+    }
+    return;
+  }
+
+  if (currentSharedStream.value) {
+    // stop if having any active remote stream
+    pcManager.requestStopScreen({
+      socketId,
+      streamId: currentSharedStream.value.stream.id,
+    });
+  }
+  // request new stream
+  pcManager.requestScreen({ socketId, streamId });
+};
+
+const appendChatMessage = (message) => {
+  // check if last message is from the same user and less than 1 minutes
+  const lastMessage = chatMessages.value[chatMessages.value.length - 1];
+  if (
+    lastMessage &&
+    lastMessage.user.id === message.user.id &&
+    Date.now() - lastMessage.timestamp < 60 * 1000
+  ) {
+    lastMessage.msgs.push(message.msgs[0]);
+    return;
+  }
+  chatMessages.value.push(message);
+};
+
+const handleSendChatMessage = (data) => {
+  const newMessage = {
+    user: {
+      id: 'local',
+    },
+    timestamp: Date.now(),
+    msgs: [data],
+    isLocal: true,
+  };
+  appendChatMessage(newMessage);
+  wsConn.send({
+    ActionType: 'ChatMessage',
+    Data: JSON.stringify(encodeURI(data)),
+  });
+};
+
+const handleHangUp = () => {
+  wsConn.close();
+  router.push('/');
+};
+const playConnectedSound = () => {
+  try {
+    if (!audioOutputDevice) return;
+    localAudio.value.src = connectedSound;
+    localAudio.value.setSinkId(audioOutputDevice);
+    localAudio.value.play();
+  } catch (err) {
+    console.error(err);
+  }
+};
+
+const removeSharedStream = ({ type, id }) => {
+  console.log('removeSharedStream', type, id);
+  if (type === 'all') {
+    sharedStreamInfos.value = sharedStreamInfos.value.filter(
+      (s) => s.socketId !== id
+    );
+  }
+  if (type === 'stream') {
+    sharedStreamInfos.value = sharedStreamInfos.value.filter(
+      (s) => s.streamId !== id
+    );
+  }
+
+  if (currentSharedStream.value?.stream.id !== id) {
+    return;
+  }
+  isGalleryView.value = true;
+  currentSharedStream.value = null;
+};
+
+const handleDrawerStopShare = (streamId) => {
+  console.log('handleDrawerStopShare', streamId);
+  pcManager.stopSharingStream(streamId);
+};
+
+const timeout = ref(null);
+const handleMouseMove = () => {
+  if (timeout.value) {
+    clearTimeout(timeout.value);
+  }
+
+  if (!showUI.value) {
+    showUI.value = true;
+  }
+  // hide control bar after 5s
+  const delayHideTime = 5 * 1000;
+  timeout.value = setTimeout(() => {
+    showUI.value = false;
+  }, delayHideTime);
+};
+
 const initConn = async () => {
   // lấy roomId và secret từ url
   const roomId = route.params.roomId;
@@ -197,19 +301,22 @@ const initConn = async () => {
   wsConn.on('Announce', (message) => {
     console.log('Announce', message.Announce);
   });
-  pcManager.onConnection = ({ id, data }) => {
+  pcManager.onConnection = ({ id, data: peerData }) => {
     peers.value.push({
       id,
-      data,
+      data: {
+        ...peerData,
+        avatarBg: generateBgColor(id),
+      },
       videoOn: false,
       audioOn: false,
-      stream: null,
+      audioStream: null,
+      videoStream: null,
     });
-  };
-  pcManager.onNewClientConnected = () => {
     playConnectedSound();
   };
   pcManager.onPeerStateChange = (id, state) => {
+    console.log(state);
     peers.value = peers.value.map((p) => {
       if (p.id === id) {
         return {
@@ -221,12 +328,90 @@ const initConn = async () => {
     });
   };
   pcManager.onPeerDestroyed = (id) => {
+    const peer = peers.value.find((p) => p.id === id);
+    if (!peer) return;
+    toast.info(`${peer.data.UserName} đã rời khỏi phòng`, toastOptions);
     peers.value = peers.value.filter((p) => p.id !== id);
+    removeSharedStream({ type: 'all', id });
+  };
+  pcManager.onRemoteStartStream = ({ socketId, streamId }) => {
+    const peer = peers.value.find((p) => p.id === socketId);
+
+    toast(`${peer.data.UserName} đang chia sẻ màn hình`, toastOptions);
+    sharedStreamInfos.value.push({
+      socketId: socketId,
+      data: peer.data,
+      streamId,
+    });
+  };
+  pcManager.onRemoteStopStream = ({ socketId, streamId }) => {
+    const peer = peers.value.find((p) => p.id === socketId);
+    toast(`${peer.data.UserName} đã dừng chia sẻ màn hình`, toastOptions);
+    removeSharedStream({ type: 'stream', id: streamId });
+  };
+  pcManager.onGotScreenStream = ({ stream }) => {
+    // find info of the stream
+    const streamInfo = sharedStreamInfos.value.find(
+      (s) => s.streamId === stream.id
+    );
+    if (!streamInfo) return;
+    currentSharedStream.value = {
+      ...streamInfo,
+      stream,
+    };
+  };
+  pcManager.onStopSharingStream = (streamId) => {
+    console.log('onStopSharingStream', streamId);
+    removeSharedStream({ type: 'stream', id: streamId });
+  };
+  pcManager.onReceivedChatMessage = ({ id, data }) => {
+    const decodedMsg = decodeURI(data);
+    const peer = peers.value.find((p) => p.id === id);
+    if (!peer) return;
+    const newMessage = {
+      user: {
+        id: peer.id,
+        avatarBg: peer.data.avatarBg,
+        userName: peer.data.UserName,
+      },
+      timestamp: Date.now(),
+      msgs: [decodedMsg],
+    };
+
+    appendChatMessage(newMessage);
   };
 };
 onMounted(() => {
   initConn();
+  window.addEventListener('mousemove', handleMouseMove);
+});
+onUnmounted(() => {
+  window.removeEventListener('mousemove', handleMouseMove);
 });
 </script>
 
-<style lang="scss" scoped></style>
+<style lang="scss" scoped>
+.control-enter-active,
+.control-leave-active {
+  transition: transform 0.5s ease;
+  transform: translateX(-50%) translateY(0);
+}
+
+.control-enter-from,
+.control-leave-to {
+  transform: translateX(-50%) translateY(100px);
+}
+
+.chat-enter-active,
+.chat-leave-active {
+  transition: all 0.5s ease;
+  // width: 350px;
+  transform: translateX(0);
+}
+.chat-enter-from,
+.chat-leave-to {
+  // width: 0;
+
+  transform: translateX(100%);
+}
+</style>

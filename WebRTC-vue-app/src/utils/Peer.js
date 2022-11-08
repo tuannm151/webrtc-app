@@ -29,64 +29,24 @@ export default class Peer {
     this.polite = isSender;
     this.wsConn = wsConn;
     this.dc = null;
+    this.clientData = clientData;
+    this.shareStreamIds = [];
     this.audioOn = false;
     this.videoOn = false;
-    this.clientData = clientData;
 
     if (isSender) {
       this.dc = this.pc.createDataChannel('chat');
-      this.dc.onopen = () => {
-        this.onChannelOpen();
-      };
-      this.dc.onmessage = (event) => {
-        const message = JSON.parse(event.data);
-        console.log(message);
-        const { type, data } = message;
-        if (type === 'connection') {
-          this.gotMessage(data);
-        } else if (type === 'action-media') {
-          if (data.type === 'audio') {
-            this.audioOn = data.active;
-          }
-          if (data.type === 'video') {
-            this.videoOn = data.active;
-          }
-          this.onMediaStateChange(data);
-        }
-      };
+      this._initDataChannel();
     }
 
     this.pc.ondatachannel = (event) => {
       this.dc = event.channel;
-      this.dc.onopen = () => {
-        this.onChannelOpen();
-      };
-      this.dc.onmessage = (event) => {
-        const message = JSON.parse(event.data);
-        console.log(message);
-        const { type, data } = message;
-        if (type === 'connection') {
-          this.gotMessage(data);
-        } else if (type === 'action-media') {
-          if (data.type === 'audio') {
-            this.audioOn = data.active;
-          }
-          if (data.type === 'video') {
-            this.videoOn = data.active;
-          }
-          this.onMediaStateChange(data);
-        }
-      };
+      this._initDataChannel();
     };
 
     this.pc.ontrack = (event) => {
-      if (event.track.kind === 'audio') {
-        this.audioOn = true;
-      }
-      if (event.track.kind === 'video') {
-        this.videoOn = true;
-      }
       const [stream] = event.streams;
+
       this.gotStream({
         stream,
         trackType: event.track.kind,
@@ -126,14 +86,30 @@ export default class Peer {
     // }
   }
 
-  onMediaStateChange() {}
-
   onChannelOpen() {}
+
+  onActionMessage() {}
+
+  _initDataChannel() {
+    this.dc.onopen = () => {
+      this.onChannelOpen();
+    };
+    this.dc.onmessage = (event) => {
+      const message = JSON.parse(event.data);
+      console.log(message);
+      const { type, data } = message;
+      if (type === 'connection') {
+        this.gotConnectionMessage(data);
+        return;
+      }
+      this.onActionMessage({ type, data });
+    };
+  }
 
   isChannelOpen() {
     return this.dc && this.dc.readyState === 'open';
   }
-  gotMessage = async ({ sdp, candidate }) => {
+  gotConnectionMessage = async ({ sdp, candidate }) => {
     try {
       if (sdp) {
         const offerCollision =
@@ -190,9 +166,23 @@ export default class Peer {
     }
   };
 
-  startStream = async (localStream) => {
+  startStream = (localStream) => {
+    // remove track if have already added
+    this.stopStream(localStream);
+
     localStream.getTracks().forEach((track) => {
       this.pc.addTrack(track, localStream);
+    });
+  };
+  stopStream = (localStream) => {
+    // stop sending all track in localStream
+    localStream.getTracks().forEach((track) => {
+      const senders = this.pc.getSenders();
+      senders.forEach((sender) => {
+        if (sender.track === track) {
+          this.pc.removeTrack(sender);
+        }
+      });
     });
   };
   _sendOffer = async (destId) => {

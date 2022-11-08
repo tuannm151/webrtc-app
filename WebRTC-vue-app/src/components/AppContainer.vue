@@ -1,8 +1,8 @@
 <template>
-  <div class="mockup-window border bg-base-300 w-[90%] h-[90%] flex flex-col">
-    <div class="flex justify-center h-full bg-gray-700">
-      <slot />
-    </div>
+  <div
+    class="flex justify-center items-center w-full h-full bg-slate-800 overflow-hidden"
+  >
+    <slot />
   </div>
 </template>
 

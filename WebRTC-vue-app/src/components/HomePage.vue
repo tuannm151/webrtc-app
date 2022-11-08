@@ -1,17 +1,27 @@
 <template>
-  <div class="flex flex-col gap-8 mt-10">
-    <div class="form-control w-full max-w-xs">
-      <input
-        type="text"
-        placeholder="Nhập tên của bạn"
-        class="input input-bordered w-full max-w-xs"
-        v-model="userName"
-      />
+  <div
+    class="mockup-window mt-10 rounded-xl bg-slate-600 h-4/5 w-full md:w-4/5 m-4"
+  >
+    <div class="flex bg-slate-700 h-full justify-center items-center">
+      <div
+        class="flex flex-col mb-10 gap-8 justify-center items-center w-full md:w-[270px] p-4"
+      >
+        <div class="form-control w-full max-w-xs">
+          <input
+            type="text"
+            placeholder="Nhập tên của bạn"
+            class="input input-bordered w-full max-w-xs"
+            v-model="userName"
+          />
+        </div>
+        <button class="btn btn-outline btn-warning w-full">
+          Tạo phòng mới
+        </button>
+        <button @click="joinRoom" class="btn btn-outline btn-warning w-full">
+          Tham gia phòng
+        </button>
+      </div>
     </div>
-    <button class="btn btn-outline btn-warning">Tạo phòng mới</button>
-    <button @click="joinRoom" class="btn btn-outline btn-warning">
-      Tham gia phòng
-    </button>
   </div>
 </template>
 
@@ -28,7 +38,7 @@ const joinRoom = () => {
   try {
     router.push('/room/123');
     // set user name to store
-    userStore.userName = userName.value || 'No name';
+    userStore.userName = userName.value || 'Ẩn danh';
     // set user name to local storage
     localStorage.setItem('UserName', userName.value);
   } catch (error) {

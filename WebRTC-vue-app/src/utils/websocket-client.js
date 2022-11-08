@@ -44,6 +44,9 @@ export class WebsocketClient {
   on(event, callback) {
     this.events[event] = callback;
   }
+  close() {
+    this.socket.close();
+  }
 
   send(data) {
     try {
@@ -51,6 +54,7 @@ export class WebsocketClient {
         throw new Error('Websocket not connected');
       }
       this.socket.send(JSON.stringify(data));
+      console.log(JSON.stringify(data));
     } catch (e) {
       console.error(e);
     }

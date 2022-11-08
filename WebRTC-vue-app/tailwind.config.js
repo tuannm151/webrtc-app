@@ -10,6 +10,10 @@ module.exports = {
       aspectRatio: {
         '4/3': '4 / 3',
       },
+      gridTemplateColumns: {
+        '3s': 'repeat(3, minmax(200px, 1fr))',
+        fluid: 'repeat(auto-fill, minmax(0, 1fr))',
+      },
     },
   },
   plugins: [require('daisyui')],

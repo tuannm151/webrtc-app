@@ -10,6 +10,10 @@ import { library } from '@fortawesome/fontawesome-svg-core';
 /* import font awesome icon component */
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 
+import Toast from 'vue-toastification';
+// Import the CSS or use your own!
+import 'vue-toastification/dist/index.css';
+
 /* import specific icons */
 import {
   faGear,
@@ -18,8 +22,14 @@ import {
   faVideo,
   faMicrophoneSlash,
   faVideoSlash,
+  faDisplay,
+  faAngleRight,
+  faAngleLeft,
+  faShareFromSquare,
+  faMessage as faMessageSolid,
 } from '@fortawesome/free-solid-svg-icons';
 
+import { faMessage as faMessageRegular } from '@fortawesome/free-regular-svg-icons';
 /* add icons to the library */
 library.add(
   faGear,
@@ -27,12 +37,19 @@ library.add(
   faVolumeUp,
   faVideo,
   faMicrophoneSlash,
-  faVideoSlash
+  faVideoSlash,
+  faDisplay,
+  faAngleRight,
+  faAngleLeft,
+  faShareFromSquare,
+  faMessageSolid,
+  faMessageRegular
 );
 
 const pinia = createPinia();
 const app = createApp(App);
-app.use(router);
 app.use(pinia);
+app.use(router);
+app.use(Toast);
 app.component('FontAwesomeIcon', FontAwesomeIcon);
 app.mount('#app');

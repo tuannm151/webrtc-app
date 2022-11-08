@@ -5,6 +5,7 @@ export default class PeerConnectionManager {
     this.wsConn = wsConnection;
     this.localVideoStream = null;
     this.localAudioStream = null;
+    this.localShareStream = [];
     this.dc = null;
     this.clientData = clientData;
 
@@ -23,7 +24,6 @@ export default class PeerConnectionManager {
       });
       this.onConnection({ id: senderSocketId, data });
       this.connections[senderSocketId] = { peer, clientData: data };
-      this.onNewClientConnected();
     });
 
     this.wsConn.on('Negotiate', async (message, data) => {
@@ -41,27 +41,8 @@ export default class PeerConnectionManager {
         this.connections[senderSocketId].clientData = remoteClientData;
         this.onConnection({ id: senderSocketId, data: remoteClientData });
       }
-      this.connections[senderSocketId].peer.gotMessage(data);
+      this.connections[senderSocketId].peer.gotConnectionMessage(data);
     });
-
-    // this.wsConn.on('Joined', async (message, data) => {
-    //   const socketDatas = data;
-
-    //   this.MySocketId = message.SourceId;
-
-    //   socketDatas.forEach(async (data) => {
-    //     const { SocketId } = data;
-    //     if (this.connections[SocketId]) {
-    //       return;
-    //     }
-    //     this._initPeer({
-    //       socketId: SocketId,
-    //       data,
-    //       polite: false,
-    //       newChannel: false,
-    //     });
-    //   });
-    // });
 
     // khi một user disconnect close peer connection
     this.wsConn.on('Disconnected', (message) => {
@@ -72,13 +53,21 @@ export default class PeerConnectionManager {
       }
       this.onPeerDestroyed(message.SourceId);
     });
+
+    this.wsConn.on('ChatMessage', (message, data) => {
+      const senderSocketId = message.SourceId;
+      this.onReceivedChatMessage({ id: senderSocketId, data });
+    });
   }
 
-  onStreamChange() {}
   onConnection = () => {};
   onPeerStateChange = () => {};
   onPeerDestroyed = () => {};
-  onNewClientConnected = () => {};
+  onGotScreenStream = () => {};
+  onRemoteStartStream = () => {};
+  onRemoteStopStream = () => {};
+  onStopSharingStream = () => {};
+  onReceivedChatMessage = () => {};
 
   sendToAllChannels = (message) => {
     Object.values(this.connections).forEach(({ peer }) => {
@@ -92,88 +81,201 @@ export default class PeerConnectionManager {
       isSender,
       clientData,
     });
-    if (this.localAudioStream) {
-      peer.startStream(this.localAudioStream);
-    }
-    if (this.localVideoStream) {
-      peer.startStream(this.localVideoStream);
-    }
-    peer.gotStream = ({ stream }) => {
-      this.onPeerStateChange(socketId, {
-        stream,
-        videoOn: peer.videoOn,
-        audioOn: peer.audioOn,
+    peer.onChannelOpen = () => {
+      if (this.localAudioStream) {
+        peer.startStream(this.localAudioStream);
+      }
+      if (this.localVideoStream) {
+        peer.startStream(this.localVideoStream);
+      }
+      this.localShareStream.forEach((stream) => {
+        this.sendToAllChannels({
+          type: 'action-stream',
+          data: {
+            type: 'start',
+            streamId: stream.id,
+            notification: false,
+          },
+        });
       });
     };
-    peer.onMediaStateChange = () => {
-      console.log('onMediaStateChange');
-      console.log({
-        videoOn: peer.videoOn,
-        audioOn: peer.audioOn,
-      });
-      this.onPeerStateChange(socketId, {
-        videoOn: peer.videoOn,
-        audioOn: peer.audioOn,
-      });
+
+    peer.gotStream = ({ stream, trackType }) => {
+      if (peer.shareStreamIds.includes(stream.id)) {
+        this.onGotScreenStream({ id: socketId, stream });
+        return;
+      }
+      const newState = {};
+      if (trackType === 'audio') {
+        newState.audioOn = true;
+        newState.audioStream = stream;
+      }
+      if (trackType === 'video') {
+        newState.videoOn = true;
+        newState.videoStream = stream;
+      }
+
+      this.onPeerStateChange(socketId, newState);
+    };
+    peer.onActionMessage = ({ type, data }) => {
+      if (type === 'action-media') {
+        const mediaState = {};
+        if (data.type === 'audio') {
+          mediaState.audioOn = data.active;
+        }
+        if (data.type === 'video') {
+          mediaState.videoOn = data.active;
+        }
+        this.onPeerStateChange(socketId, mediaState);
+      }
+
+      if (type === 'action-stream') {
+        const { streamId, type: action } = data;
+        if (action === 'start') {
+          peer.shareStreamIds.push(streamId);
+          this.onRemoteStartStream({ socketId, streamId });
+        }
+        if (action === 'request') {
+          const stream = this.localShareStream.find(
+            (stream) => stream.id === streamId
+          );
+          if (!stream) return;
+          peer.startStream(stream);
+        }
+        if (action === 'stop') {
+          this.onRemoteStopStream({ socketId, streamId });
+        }
+        if (action === 'request-stop') {
+          // check if stream is exist in localShareStream
+          const stream = this.localShareStream.find(
+            (stream) => stream.id === streamId
+          );
+          if (stream) {
+            console.log('stop sending stream', streamId);
+            peer.stopStream(stream);
+          }
+        }
+      }
     };
     return peer;
   };
 
+  requestScreen = ({ socketId, streamId }) => {
+    this.connections[socketId].peer.sendMessageChannel({
+      type: 'action-stream',
+      data: {
+        type: 'request',
+        streamId,
+      },
+    });
+  };
+  requestStopScreen = ({ socketId, streamId }) => {
+    this.connections[socketId].peer.sendMessageChannel({
+      type: 'action-stream',
+      data: {
+        type: 'request-stop',
+        streamId,
+      },
+    });
+  };
+
+  startCapture = async () => {
+    // capture screen
+    const stream = await navigator.mediaDevices.getDisplayMedia({
+      video: {
+        cursor: 'always',
+      },
+      audio: true,
+    });
+    this.sendToAllChannels({
+      type: 'action-stream',
+      data: {
+        type: 'start',
+        streamId: stream.id,
+        notification: true,
+      },
+    });
+
+    stream.getTracks().forEach((track) => {
+      track.onended = () => {
+        // handle sharing forced stop by user at browser popup.
+        console.log('track stop sharing stream', stream.id);
+        this.stopSharingStream(stream.id);
+      };
+    });
+
+    this.localShareStream.push(stream);
+    return stream;
+  };
+
+  stopSharingStream = (streamId) => {
+    const stream = this.localShareStream.find(
+      (stream) => stream.id === streamId
+    );
+    if (!stream) return;
+    stream.getTracks().forEach((track) => track.stop());
+    this.localShareStream = this.localShareStream.filter(
+      (stream) => stream.id !== streamId
+    );
+    this.sendToAllChannels({
+      type: 'action-stream',
+      data: {
+        type: 'stop',
+        streamId,
+      },
+    });
+    console.log('stop sharing stream', streamId);
+    this.onStopSharingStream(streamId);
+  };
+
   openLocalMedia = async (data) => {
     const { type, deviceId } = data;
-    try {
-      const localStream = await this.getUserMedia({
-        type,
-        deviceId,
-      });
-      Object.values(this.connections).forEach(({ peer }) => {
-        peer.startStream(localStream);
-      });
+    const localStream = await this.getUserMedia({
+      type,
+      deviceId,
+    });
+    localStream.type = screen;
+    Object.values(this.connections).forEach(({ peer }) => {
+      peer.startStream(localStream);
+    });
 
-      if (type === 'video') {
-        this.localVideoStream = localStream;
-      }
-      if (type === 'audio') {
-        this.localAudioStream = localStream;
-      }
-
-      return localStream;
-    } catch (e) {
-      console.error('Error opening local media', e);
+    if (type === 'video') {
+      this.localVideoStream = localStream;
     }
+    if (type === 'audio') {
+      this.localAudioStream = localStream;
+    }
+
+    return localStream;
   };
   closeLocalMedia = async (type) => {
-    try {
-      if (type === 'video') {
-        if (!this.localVideoStream) {
-          return;
-        }
-        this.localVideoStream.getTracks().forEach((track) => track.stop());
-        this.localVideoStream = undefined;
-        this.sendToAllChannels({
-          type: 'action-media',
-          data: {
-            type: 'video',
-            active: false,
-          },
-        });
+    if (type === 'video') {
+      if (!this.localVideoStream) {
+        return;
       }
-      if (type === 'audio') {
-        if (!this.localAudioStream) {
-          return;
-        }
-        this.localAudioStream.getTracks().forEach((track) => track.stop());
-        this.localAudioStream = undefined;
-        this.sendToAllChannels({
-          type: 'action-media',
-          data: {
-            type: 'audio',
-            active: false,
-          },
-        });
+      this.localVideoStream.getTracks().forEach((track) => track.stop());
+      this.localVideoStream = undefined;
+      this.sendToAllChannels({
+        type: 'action-media',
+        data: {
+          type: 'video',
+          active: false,
+        },
+      });
+    }
+    if (type === 'audio') {
+      if (!this.localAudioStream) {
+        return;
       }
-    } catch (err) {
-      console.error(err);
+      this.localAudioStream.getTracks().forEach((track) => track.stop());
+      this.localAudioStream = undefined;
+      this.sendToAllChannels({
+        type: 'action-media',
+        data: {
+          type: 'audio',
+          active: false,
+        },
+      });
     }
   };
 

@@ -1,38 +1,53 @@
 <template>
   <button
-    class="border-2 border-white rounded-full w-10 h-10 flex justify-center items-center"
-    :class="[isOn ? '' : 'bg-red-600 border-red-500', classes ? classes : '']"
+    class="w-9 h-9 flex justify-center items-center"
+    :class="[classes, iconColor]"
   >
-    <FontAwesomeIcon
-      :icon="isOn ? iconOn : iconOff"
-      class="text-white"
-      :class="[size]"
-    />
+    <FontAwesomeIcon :icon="iconClass" :class="[iconSize]" />
   </button>
 </template>
 
 <script setup>
-defineProps({
+import { computed } from 'vue';
+
+const props = defineProps({
   iconOn: {
     type: String,
-    required: true,
+    required: false,
   },
   iconOff: {
     type: String,
-    required: true,
+    required: false,
+  },
+  icon: {
+    type: String,
+    required: false,
   },
   isOn: {
     type: Boolean,
-    required: true,
+    required: false,
   },
-  size: {
+  iconSize: {
     type: String,
     default: 'text-xl',
   },
   classes: {
     type: String,
+    required: false,
     default: '',
   },
+  iconColor: {
+    type: String,
+    required: false,
+    default: 'text-white',
+  },
+});
+
+const iconClass = computed(() => {
+  if (props.icon) {
+    return props.icon;
+  }
+  return props.isOn ? props.iconOn : props.iconOff;
 });
 </script>
 

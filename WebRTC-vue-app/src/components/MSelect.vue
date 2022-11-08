@@ -1,5 +1,5 @@
 <template>
-  <div class="form-control w-full max-w-xs">
+  <div class="form-control w-full max-w-[250px] md:max-w-xs" :class="classes">
     <label v-if="label" class="label">
       <span class="label-text font-bold">{{ label }}</span>
     </label>
@@ -39,6 +39,10 @@ defineProps({
   isLoading: {
     type: Boolean,
     default: false,
+  },
+  classes: {
+    type: String,
+    default: '',
   },
 });
 

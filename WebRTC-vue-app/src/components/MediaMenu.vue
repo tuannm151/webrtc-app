@@ -2,16 +2,16 @@
   <VueFinalModal
     v-model="showModal"
     :click-to-close="false"
-    content-class="modal-box px-8 w-3/5 max-w-5xl h-5/6 flex flex-col"
+    content-class="modal-box px-4 md:px-8 max-w-full lg:max-w-5xl max-h-full h-full w-full xl:w-3/5 lg:h-4/5 flex flex-col overflow-hidden flex justify-center"
     classes="flex justify-center items-center"
   >
-    <div class="flex gap-4 items-center mb-10">
+    <div class="flex gap-4 items-center sm:mb-4 lg:mb-10">
       <FontAwesomeIcon icon="fa-solid fa-gear" class="text-2xl" />
       <h3 class="font-bold text-2xl mb-1">Lựa chọn thiết lập</h3>
     </div>
-    <div class="flex flex-1 flex-wrap">
+    <div class="flex flex-1 gap-2 flex-wrap overflow-hidden">
       <div class="flex-1 flex-col gap-5">
-        <div class="flex gap-6 flex-col">
+        <div class="flex gap-2 md:gap-6 flex-col">
           <div class="flex flex-col gap-1 flex-1">
             <label class="text-md font-bold ml-14">Microphone</label>
             <div class="flex gap-4 items-center">
@@ -53,11 +53,11 @@
           </div>
         </div>
       </div>
-      <div class="flex flex-col flex-1 gap-4">
-        <div class="relative mr-8">
+      <div class="flex flex-col flex-1 gap-4 min-w-[320px] items-center">
+        <div class="relative">
           <video
             ref="localVideo"
-            class="w-full h-72 object-cover rounded-lg"
+            class="w-full aspect-4/3 object-cover rounded-lg"
             poster="../assets/black_image.jpg"
             autoplay
             muted
@@ -88,10 +88,7 @@
             </div>
           </div>
         </div>
-        <button
-          class="btn btn-outline gap-2 self-start"
-          @click="playAudioHandler"
-        >
+        <button class="btn btn-outline gap-2" @click="playAudioHandler">
           Test Audio
           <FontAwesomeIcon icon="fa-solid fa-volume-up" class="text-xl w-10" />
         </button>
@@ -109,7 +106,7 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue';
+import { onMounted, onUnmounted, ref, watchEffect } from 'vue';
 import { VueFinalModal } from 'vue-final-modal';
 import { useMediaStore } from '../store/mediaStore';
 import MSelect from './MSelect.vue';
@@ -170,9 +167,9 @@ const visualizeAudioStream = () => {
     let x = 0;
     for (let i = 0; i < bufferLength; i++) {
       barHeight = dataArray[i];
-      canvasCtx.fillStyle = `rgb(${barHeight + 146}, ${barHeight + 39}, ${
-        barHeight + 36
-      })`;
+
+      // fill with  dynamic light blue
+      canvasCtx.fillStyle = `hsl(200, 100%, ${barHeight / 2}%)`;
 
       canvasCtx.fillRect(x, HEIGHT - barHeight / 2, barWidth, barHeight / 2);
       x += barWidth + 1;
@@ -216,6 +213,7 @@ const toggleCamera = async () => {
 
   videoStream.value = stream;
   isCameraOn.value = true;
+  localVideo.value.srcObject = stream;
 };
 
 const toggleMicrophone = async () => {
@@ -291,12 +289,12 @@ const initDevices = async () => {
     if (audioOutputs.value.length > 0) {
       mediaStore.audioOutputDevice = audioOutputs.value[0].value;
     }
-    // if (videoInputs.value.length > 0) {
-    //   toggleCamera();
-    // }
-    // if (audioInputs.value.length > 0) {
-    //   toggleMicrophone();
-    // }
+    if (videoInputs.value.length > 0) {
+      toggleCamera();
+    }
+    if (audioInputs.value.length > 0) {
+      toggleMicrophone();
+    }
   } catch (error) {
     console.log(error);
   } finally {
@@ -304,8 +302,31 @@ const initDevices = async () => {
   }
 };
 
+const unWatchVideo = watchEffect(() => {
+  if (videoInputs.value.length > 0 && localAudio.value?.srcObject) {
+    toggleCamera();
+    unWatchVideo();
+  }
+});
+
+const unWatchAudio = watchEffect(() => {
+  if (audioInputs.value.length > 0 && localVideo.value?.srcObject) {
+    toggleMicrophone();
+    unWatchAudio();
+  }
+});
+
 onMounted(() => {
   initDevices();
+});
+
+onUnmounted(() => {
+  if (videoStream.value) {
+    videoStream.value.getTracks().forEach((track) => track.stop());
+  }
+  if (audioStream.value) {
+    audioStream.value.getTracks().forEach((track) => track.stop());
+  }
 });
 </script>
 
