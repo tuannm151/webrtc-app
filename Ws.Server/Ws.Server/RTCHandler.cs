@@ -24,8 +24,6 @@ namespace WS.Server
         }
         public override async Task HandleMessage(WebSocket socket, string message)
         {
-
-            Console.WriteLine(message);
             var socketId = _webSocketManager.GetId(socket);
 
             var wsMessage = JsonConvert.DeserializeObject<WSMessage>(message);
@@ -102,6 +100,7 @@ namespace WS.Server
                 await _webSocketManager.RemoveSocket(socketId);
             } catch (Exception e)
             {
+                Console.WriteLine("Error while closing socket");
                 Console.WriteLine(e.Message);
             }
             

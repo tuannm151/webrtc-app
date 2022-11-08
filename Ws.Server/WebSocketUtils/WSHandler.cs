@@ -50,13 +50,10 @@ namespace WebSocketUtils
         /// <returns></returns>
         public async Task SendMessageAsync(WebSocket socket, string message)
         {
-            if (socket == null) return;
             if (socket.State != WebSocketState.Open)
                 return;
-
-            await socket.SendAsync(buffer: new ArraySegment<byte>(array: Encoding.ASCII.GetBytes(message),
-                                                                  offset: 0,
-                                                                  count: message.Length),
+            Console.WriteLine(message);
+            await socket.SendAsync(buffer: new ArraySegment<byte>(array: Encoding.UTF8.GetBytes(message)),
                                    messageType: WebSocketMessageType.Text,
                                    endOfMessage: true,
                                    cancellationToken: CancellationToken.None);
@@ -88,13 +85,14 @@ namespace WebSocketUtils
             var senderSocketId = _wsConnectionManager.GetId(socket);
             if (group != null)
             {
-                foreach (var connectionId in group.Connections.Keys)
-                {
-                    if (connectionId != senderSocketId)
+                var tasks = group.Connections.Keys.Select(async id =>
                     {
-                        await SendMessageAsync(connectionId, message);
-                    }
-                }
+                        if (id != senderSocketId)
+                        {
+                            await SendMessageAsync(id, message);
+                        }
+                  });
+                await Task.WhenAll(tasks);
             }
         }
 
