@@ -36,7 +36,8 @@
             Joined,
             IceCandidate,
             Heartbeat,
-            Negotiate
+            Negotiate,
+            ChatMessage
         }
 
     }

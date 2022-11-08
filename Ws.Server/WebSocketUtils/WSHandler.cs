@@ -134,11 +134,12 @@ namespace WebSocketUtils
                     group.GroupSecret = secret;
                 }
                 _group.TryAdd(groupName,group);
-            } else if(secret != group.GroupSecret)
+            }
+            else if (!String.IsNullOrEmpty(group.GroupSecret) && secret != group.GroupSecret)
             {
                 return false;
             }
-           
+            
             var socketId = _wsConnectionManager.GetId(socket);
             group.AddConnection(socketId);
             return true;

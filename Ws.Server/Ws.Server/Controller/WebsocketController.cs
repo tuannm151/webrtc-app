@@ -65,7 +65,6 @@ namespace Ws.Server.Controller
                         else
                             messageStr.Append(Encoding.UTF8.GetString(buffer, 0, result.Count));
                     } while (!result.EndOfMessage);
-
                     handleMessage(result, messageStr.ToString());
                 }
             } catch (Exception e)

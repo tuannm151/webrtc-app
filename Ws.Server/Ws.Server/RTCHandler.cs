@@ -66,6 +66,12 @@ namespace WS.Server
                     wsMessage.SourceId = socketId;
                     _ = SendMessageAsync(wsMessage.DestId, JsonConvert.SerializeObject(wsMessage));
                     return;
+                case MessageEnum.ActionType.ChatMessage:
+                    var group = GetGroup(socket);
+                    wsMessage.SourceId = socketId;
+                    Console.WriteLine(wsMessage.Data);
+                    _ = SendMessageAsyncGroup(socket, group.GroupName, JsonConvert.SerializeObject(wsMessage));
+                    return;
                 default:
                     break;
             }
