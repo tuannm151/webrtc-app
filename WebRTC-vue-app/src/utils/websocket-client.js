@@ -24,6 +24,7 @@ export class WebsocketClient {
     };
 
     this.socket.onmessage = (message) => {
+      console.log('Websocket message received', message);
       const wsMessage = JSON.parse(message.data);
       const data = JSON.parse(wsMessage.Data);
       const { ActionType } = wsMessage;

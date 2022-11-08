@@ -11,6 +11,7 @@ import { library } from '@fortawesome/fontawesome-svg-core';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 
 import Toast from 'vue-toastification';
+import vClickOutside from 'click-outside-vue3';
 // Import the CSS or use your own!
 import 'vue-toastification/dist/index.css';
 
@@ -51,5 +52,6 @@ const app = createApp(App);
 app.use(pinia);
 app.use(router);
 app.use(Toast);
+app.use(vClickOutside);
 app.component('FontAwesomeIcon', FontAwesomeIcon);
 app.mount('#app');

@@ -35,7 +35,7 @@
         <p
           v-for="(msg, index) in message.msgs"
           :key="index"
-          class="px-5 py-2 text-sm rounded-xl break-words max-w-full"
+          class="px-5 py-2 text-[15px] rounded-xl break-words max-w-full"
           :class="[
             sending
               ? 'bg-[#04c295]'
@@ -52,6 +52,7 @@
 <script setup>
 import UserAvatar from '@/components/UserAvatar.vue';
 import { convertTimestampToLocalTime } from '@/utils/convertUtils.js';
+
 defineProps({
   message: {
     type: Object,

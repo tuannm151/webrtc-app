@@ -56,9 +56,8 @@ import { ref } from 'vue';
 import SharedItem from './SharedItem.vue';
 
 const drawer = ref(null);
-const isOpen = ref(false);
 
-const emit = defineEmits(['switch-stream', 'stop-share']);
+const emit = defineEmits(['switch-stream', 'stop-share', 'toggle']);
 
 const props = defineProps({
   streams: {
@@ -70,6 +69,11 @@ const props = defineProps({
     required: true,
   },
   blurBackground: {
+    type: Boolean,
+    required: false,
+    default: true,
+  },
+  isOpen: {
     type: Boolean,
     required: false,
     default: true,
@@ -90,7 +94,7 @@ const handleStopShare = (streamId) => {
 };
 
 const toggleDrawer = () => {
-  isOpen.value = !isOpen.value;
+  emit('toggle');
 };
 </script>
 

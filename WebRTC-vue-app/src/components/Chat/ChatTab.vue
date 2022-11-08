@@ -13,10 +13,32 @@
         :sending="msg?.isLocal === true"
       />
     </div>
-    <div class="flex flex-col px-4 pb-5 h-[120px] justify-end">
+    <div
+      class="flex relative flex-col gap-2 px-4 mb-8 h-[120px] justify-end bg-[#1e2131]"
+    >
+      <EmojiPicker
+        v-if="pickerOn"
+        @close-picker="togglePicker"
+        @select-emoji="handleSelectEmoji"
+      />
+      <div class="flex justify-between">
+        <div class="flex gap-2">
+          <button
+            @click.stop="togglePicker"
+            class="text-gray-400 hover:text-gray-200"
+          >
+            <StickerIcon style="height: 20px; width: 20px" />
+          </button>
+          <button class="text-gray-400 hover:text-gray-200">
+            <ImageAddIcon style="height: 20px; width: 20px" />
+          </button>
+          <button class="text-gray-400 hover:text-gray-200">
+            <AttachIcon style="height: 20px; width: 20px" />
+          </button>
+        </div>
+      </div>
       <div
-        class="flex gap-1 border-2 border-slate-500 py-2 px-3 rounded-lg items-center bg-[#1e2131]"
-        @keyup.enter="handleSendChatMessage"
+        class="flex gap-1 border-2 border-slate-500 py-2 px-3 rounded-md items-center"
       >
         <textarea
           ref="textarea"
@@ -24,9 +46,9 @@
           type="text"
           placeholder="Nhập tin nhắn"
           class="w-full max-w-xs bg-transparent text-white outline-none max-h-[100px] min-h-6 h-6 resize-none text-sm overflow-hidden"
-          @keypress="autoGrow"
+          @keypress="inputHandler"
         />
-        <button @click="handleSendChatMessage">
+        <button @click="sendChatMessage">
           <SendIcon style="font-size: 16px; color: white" />
         </button>
       </div>
@@ -35,8 +57,12 @@
 </template>
 
 <script setup>
+import EmojiPicker from './EmojiPicker.vue';
 import { onMounted, onUpdated, ref } from 'vue';
 import SendIcon from '~icons/mdi/send';
+import StickerIcon from '~icons/mdi/sticker-emoji';
+import ImageAddIcon from '~icons/mdi/file-image-plus';
+import AttachIcon from '~icons/mdi/attachment';
 import MessageGroup from './MessageGroup.vue';
 
 defineProps({
@@ -49,21 +75,43 @@ defineProps({
 const textarea = ref(null);
 const message = ref('');
 const msgContainer = ref(null);
+const pickerOn = ref(false);
 
 const emit = defineEmits(['send-message']);
 
 const autoGrow = () => {
-  textarea.value.style.height = 0;
+  textarea.value.style.height = '0';
   textarea.value.style.height = textarea.value.scrollHeight + 'px';
 };
 
-const handleSendChatMessage = () => {
-  if (message.value.trim() === '') {
-    return;
+const inputHandler = (event) => {
+  if (event.keyCode === 13 && !event.shiftKey) {
+    sendChatMessage();
+    textarea.value.style.height = '0';
+    event.preventDefault();
   }
+
+  autoGrow();
+};
+
+const sendChatMessage = () => {
+  if (message.value.trim() === '') return;
+
   emit('send-message', message.value);
   message.value = '';
   textarea.value.style.height = 0;
+};
+
+const togglePicker = (e) => {
+  if (e) {
+    e.stopPropagation();
+  }
+  pickerOn.value = !pickerOn.value;
+};
+
+const handleSelectEmoji = (e) => {
+  message.value += e.emoji;
+  autoGrow();
 };
 
 onMounted(() => {

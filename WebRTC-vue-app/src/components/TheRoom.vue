@@ -16,8 +16,10 @@
         isGalleryView ? 'gallery' : currentSharedStream?.stream.id || 'gallery'
       "
       :blurBackground="showUI"
+      :isOpen="isDrawerOpen"
       @switch-stream="handleSwitchStream"
       @stop-share="handleDrawerStopShare"
+      @toggle="toggleDrawer"
     />
 
     <VideoGrid
@@ -89,6 +91,7 @@ const chatMessages = ref([]);
 const sharedStreamInfos = ref([]);
 const isGalleryView = ref(true);
 const isChatOpen = ref(false);
+const isDrawerOpen = ref(false);
 const currentSharedStream = ref(null);
 const wsConn = reactive(
   new WebsocketClient(import.meta.env.VITE_CONNECTION_URL)
@@ -143,6 +146,10 @@ const toggleChat = () => {
   isChatOpen.value = !isChatOpen.value;
 };
 
+const toggleDrawer = () => {
+  isDrawerOpen.value = !isDrawerOpen.value;
+};
+
 const startSharing = async () => {
   try {
     const stream = await pcManager.startCapture();
@@ -161,6 +168,7 @@ const startSharing = async () => {
       },
       socketId: 'local',
     });
+    isDrawerOpen.value = true;
   } catch (err) {
     console.error(err);
   }
@@ -228,7 +236,7 @@ const handleSendChatMessage = (data) => {
   appendChatMessage(newMessage);
   wsConn.send({
     ActionType: 'ChatMessage',
-    Data: JSON.stringify(encodeURI(data)),
+    Data: JSON.stringify(data),
   });
 };
 
@@ -343,6 +351,10 @@ const initConn = async () => {
       data: peer.data,
       streamId,
     });
+    // if having first stream open drawer
+    if (sharedStreamInfos.value.length === 1) {
+      isDrawerOpen.value = true;
+    }
   };
   pcManager.onRemoteStopStream = ({ socketId, streamId }) => {
     const peer = peers.value.find((p) => p.id === socketId);
@@ -365,7 +377,6 @@ const initConn = async () => {
     removeSharedStream({ type: 'stream', id: streamId });
   };
   pcManager.onReceivedChatMessage = ({ id, data }) => {
-    const decodedMsg = decodeURI(data);
     const peer = peers.value.find((p) => p.id === id);
     if (!peer) return;
     const newMessage = {
@@ -375,7 +386,7 @@ const initConn = async () => {
         userName: peer.data.UserName,
       },
       timestamp: Date.now(),
-      msgs: [decodedMsg],
+      msgs: [data],
     };
 
     appendChatMessage(newMessage);
