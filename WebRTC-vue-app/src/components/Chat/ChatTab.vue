@@ -1,6 +1,6 @@
 <template>
   <div
-    class="w-[350px] flex-shrink-0 h-full px-1 pt-7 flex flex-col bg-[#1e2131]"
+    class="flex-shrink-0 h-full px-1 pt-7 flex flex-col bg-[#1e2131] pb-10 md:pb-0 w-full md:w-[350px]"
   >
     <div
       ref="msgContainer"
@@ -45,7 +45,7 @@
           v-model="message"
           type="text"
           placeholder="Nhập tin nhắn"
-          class="w-full max-w-xs bg-transparent text-white outline-none max-h-[100px] min-h-6 h-6 resize-none text-sm overflow-hidden"
+          class="w-full flex-1 bg-transparent text-white outline-none max-h-[100px] min-h-6 h-6 resize-none text-sm overflow-hidden"
           @keypress="inputHandler"
         />
         <button @click="sendChatMessage">

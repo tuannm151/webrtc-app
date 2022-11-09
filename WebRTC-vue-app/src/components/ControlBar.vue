@@ -1,6 +1,6 @@
 <template>
   <div
-    class="flex xl:w-[400px] md:py-1 gap-6 items-center absolute bottom-2 left-1/2 -translate-x-1/2 mx-auto bg-black rounded-xl"
+    class="flex z-50 xl:w-[400px] md:py-1 gap-6 items-center absolute bottom-2 left-1/2 -translate-x-1/2 mx-auto bg-black rounded-xl"
   >
     <div class="flex-1 flex gap-4 justify-end">
       <ToggleDeviceBtn

@@ -54,6 +54,7 @@ export default function useScreenFit() {
   const setTotalSize = ({ TotalWidth, TotalHeight }) => {
     totalWidth.value = TotalWidth;
     totalHeight.value = TotalHeight;
+    console.log('hook run');
   };
   const setStreamState = ({ AspectRatio, StreamCount }) => {
     aspectRatio.value = AspectRatio;

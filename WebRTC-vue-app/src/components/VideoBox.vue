@@ -1,5 +1,5 @@
 <template>
-  <div class="p-1 transition-all duration-500" ref="videoContainer">
+  <div class="p-1 md:transition-all md:duration-300" ref="videoContainer">
     <div
       class="flex w-full h-full justify-center items-center bg-gray-700 relative overflow-hidden rounded-xl"
     >

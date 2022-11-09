@@ -22,18 +22,23 @@
       @toggle="toggleDrawer"
     />
 
-    <VideoGrid
-      v-if="isGalleryView"
-      :localStream="localStream"
-      :peers="peers"
-      :isMicrophoneOn="isMicrophoneOn"
-      :isCameraOn="isCameraOn"
-    />
+    <div
+      class="w-full h-full overflow-hidden"
+      :class="type === 'xs' && isChatOpen ? 'hidden' : ''"
+    >
+      <VideoGrid
+        v-if="isGalleryView"
+        :localStream="localStream"
+        :peers="peers"
+        :isMicrophoneOn="isMicrophoneOn"
+        :isCameraOn="isCameraOn"
+      />
 
-    <StreamBox
-      v-if="!isGalleryView && currentSharedStream"
-      :currentSharedStream="currentSharedStream"
-    />
+      <StreamBox
+        v-if="!isGalleryView && currentSharedStream"
+        :currentSharedStream="currentSharedStream"
+      />
+    </div>
     <Transition name="chat">
       <ChatTab
         v-if="isChatOpen"
@@ -73,6 +78,7 @@ import StreamBox from './StreamBox.vue';
 import ChatTab from './Chat/ChatTab.vue';
 import { generateBgColor } from '../utils/stringUtils';
 import ControlBar from './ControlBar.vue';
+import useBreakpoints from '../hooks/useBreakpoints';
 
 const route = useRoute();
 const router = useRouter();
@@ -96,10 +102,12 @@ const currentSharedStream = ref(null);
 const wsConn = reactive(
   new WebsocketClient(import.meta.env.VITE_CONNECTION_URL)
 );
+
 const { userName: UserName } = userStore;
 const userData = {
   UserName,
 };
+const { type } = useBreakpoints();
 const pcManager = reactive(new PeerConnectionManager(wsConn, userData));
 const toast = useToast();
 const isCameraOn = ref(false);
@@ -160,6 +168,7 @@ const startSharing = async () => {
         UserName: 'bạn',
       },
       isLocal: true,
+      socketId: 'local',
     };
     sharedStreamInfos.value.unshift({
       streamId: stream.id,
@@ -175,7 +184,10 @@ const startSharing = async () => {
 };
 
 const handleSwitchStream = (data) => {
-  console.log(data);
+  // if mobile user switch stream during open chat
+  if (type.value === 'xs' && isChatOpen.value) {
+    isChatOpen.value = false;
+  }
   const { socketId, streamId } = data;
   if (streamId === 'gallery') {
     isGalleryView.value = true;
@@ -268,7 +280,10 @@ const removeSharedStream = ({ type, id }) => {
     );
   }
 
-  if (currentSharedStream.value?.stream.id !== id) {
+  if (
+    currentSharedStream.value?.stream.id !== id &&
+    currentSharedStream.value?.socketId !== id
+  ) {
     return;
   }
   isGalleryView.value = true;
@@ -415,7 +430,7 @@ onUnmounted(() => {
 
 .chat-enter-active,
 .chat-leave-active {
-  transition: all 0.5s ease;
+  transition: all 0.3s ease;
   // width: 350px;
   transform: translateX(0);
 }

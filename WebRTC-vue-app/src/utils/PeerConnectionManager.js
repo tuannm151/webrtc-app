@@ -89,7 +89,7 @@ export default class PeerConnectionManager {
         peer.startStream(this.localVideoStream);
       }
       this.localShareStream.forEach((stream) => {
-        this.sendToAllChannels({
+        peer.sendMessageChannel({
           type: 'action-stream',
           data: {
             type: 'start',

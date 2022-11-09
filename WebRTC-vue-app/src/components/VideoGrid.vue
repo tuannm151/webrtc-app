@@ -1,7 +1,7 @@
 <template>
   <div
     ref="videoContainer"
-    class="w-full h-full overflow-hidden relative flex-1"
+    class="w-full h-full relative flex-1 flex-wrap md:flex-nowrap pb-10 md:pb-0"
   >
     <VideoBox
       userName="Bạn"

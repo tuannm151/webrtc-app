@@ -1,7 +1,7 @@
 <template>
   <div
     ref="videoContainer"
-    class="w-full h-full overflow-hidden relative flex justify-center items-center"
+    class="w-full h-full overflow-hidden relative flex justify-center items-center pb-10 md:pb-0"
   >
     <VideoBox
       :stream="currentSharedStream.stream"
