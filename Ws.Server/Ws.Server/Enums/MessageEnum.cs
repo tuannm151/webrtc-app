@@ -37,7 +37,8 @@
             IceCandidate,
             Heartbeat,
             Negotiate,
-            ChatMessage
+            ChatMessage,
+            MediaState
         }
 
     }

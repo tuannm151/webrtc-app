@@ -83,17 +83,18 @@ namespace WebSocketUtils
         {
             var group = _group.FirstOrDefault(x => x.Key == groupName).Value;
             var senderSocketId = _wsConnectionManager.GetId(socket);
-            if (group != null)
+            if (String.IsNullOrEmpty(groupName))
             {
-                var tasks = group.Connections.Keys.Select(async id =>
-                    {
-                        if (id != senderSocketId)
-                        {
-                            await SendMessageAsync(id, message);
-                        }
-                  });
-                await Task.WhenAll(tasks);
+                return;
             }
+            var tasks = group.Connections.Keys.Select(async id =>
+            {
+                if (id != senderSocketId)
+                {
+                    await SendMessageAsync(id, message);
+                }
+            });
+            await Task.WhenAll(tasks);
         }
 
         /// <summary>

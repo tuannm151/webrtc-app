@@ -25,8 +25,9 @@ namespace WS.Server
         public override async Task HandleMessage(WebSocket socket, string message)
         {
             var socketId = _webSocketManager.GetId(socket);
-
+            var group = GetGroup(socket);
             var wsMessage = JsonConvert.DeserializeObject<WSMessage>(message);
+            wsMessage.SourceId = socketId;
             switch (wsMessage.ActionType)
             {
                 case MessageEnum.ActionType.JoinGroup:
@@ -61,13 +62,12 @@ namespace WS.Server
                     LeaveGroup(socket);
                     return;
                 case MessageEnum.ActionType.Negotiate:
-                    wsMessage.SourceId = socketId;
                     _ = SendMessageAsync(wsMessage.DestId, JsonConvert.SerializeObject(wsMessage));
                     return;
                 case MessageEnum.ActionType.ChatMessage:
-                    var group = GetGroup(socket);
-                    wsMessage.SourceId = socketId;
-                    Console.WriteLine(wsMessage.Data);
+                    _ = SendMessageAsyncGroup(socket, group.GroupName, JsonConvert.SerializeObject(wsMessage));
+                    return;
+                case MessageEnum.ActionType.MediaState:
                     _ = SendMessageAsyncGroup(socket, group.GroupName, JsonConvert.SerializeObject(wsMessage));
                     return;
                 default:
