@@ -31,8 +31,6 @@ export default class Peer {
     this.dc = null;
     this.clientData = clientData;
     this.shareStreamIds = [];
-    this.audioOn = false;
-    this.videoOn = false;
 
     if (isSender) {
       this.dc = this.pc.createDataChannel('chat');
@@ -88,8 +86,6 @@ export default class Peer {
 
   onChannelOpen() {}
 
-  onActionMessage() {}
-
   _initDataChannel() {
     this.dc.onopen = () => {
       this.onChannelOpen();
@@ -100,9 +96,7 @@ export default class Peer {
       const { type, data } = message;
       if (type === 'connection') {
         this.gotConnectionMessage(data);
-        return;
       }
-      this.onActionMessage({ type, data });
     };
   }
 

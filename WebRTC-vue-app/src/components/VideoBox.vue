@@ -1,8 +1,9 @@
 <template>
   <div class="p-1 md:transition-all md:duration-300" ref="videoContainer">
     <div
-      class="flex w-full h-full justify-center items-center bg-gray-700 relative overflow-hidden rounded-xl"
+      class="flex w-full h-full justify-center items-center text-white relative overflow-hidden rounded-xl"
     >
+      <TheBackground classes="bg-base-100 brightness-125" />
       <video
         v-if="stream"
         :src-object.prop.camel="stream"
@@ -16,7 +17,7 @@
         playsinline
       ></video>
       <div
-        class="absolute text-white font-medium bottom-4 left-4 bg-gray-transparent px-3 rounded-md"
+        class="absolute font-medium bottom-4 left-4 bg-gray-transparent px-3 rounded-md"
       >
         {{ isLocal ? 'Bạn' : userName }}
       </div>
@@ -33,10 +34,7 @@
         v-if="!audioOn"
         class="h-8 w-8 flex justify-center items-center rounded-full absolute bg-gray-transparent right-4 top-4 z-10"
       >
-        <FontAwesomeIcon
-          icon="fa-solid fa-microphone-slash"
-          class="text-white text-sm"
-        />
+        <FontAwesomeIcon icon="fa-solid fa-microphone-slash" class="text-sm" />
       </div>
     </div>
   </div>
@@ -45,6 +43,7 @@
 <script setup>
 import { ref, watchEffect } from 'vue';
 import UserAvatar from './UserAvatar.vue';
+import TheBackground from './Utils/TheBackground.vue';
 
 const props = defineProps({
   userName: {

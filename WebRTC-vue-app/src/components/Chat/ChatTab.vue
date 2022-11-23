@@ -1,10 +1,11 @@
 <template>
   <div
-    class="flex-shrink-0 h-full px-1 pt-7 flex flex-col bg-[#1e2131] pb-10 md:pb-0 w-full md:w-[350px]"
+    class="flex-shrink-0 h-full px-1 pt-7 flex flex-col relative pb-10 md:pb-0 w-full md:w-[350px] text-base-content"
   >
+    <TheBackground classes="bg-base-100 brightness-125" />
     <div
       ref="msgContainer"
-      class="flex flex-col gap-5 flex-1 w-full pt-3 overflow-auto px-4 pb-6 scrollbar"
+      class="flex z-10 flex-col gap-5 flex-1 w-full pt-3 overflow-auto px-4 pb-6 scrollbar"
     >
       <MessageGroup
         v-for="(msg, index) in messages"
@@ -13,43 +14,39 @@
         :sending="msg?.isLocal === true"
       />
     </div>
-    <div
-      class="flex relative flex-col gap-2 px-4 mb-8 h-[120px] justify-end bg-[#1e2131]"
-    >
+    <div class="flex relative flex-col gap-2 px-4 mb-8 h-[120px] justify-end">
+      <TheBackground classes="bg-base-200 brightness-125 -z-10" />
       <EmojiPicker
-        v-if="pickerOn"
         @close-picker="togglePicker"
         @select-emoji="handleSelectEmoji"
+        :isActive="pickerOn"
       />
       <div class="flex justify-between">
         <div class="flex gap-2">
-          <button
-            @click.stop="togglePicker"
-            class="text-gray-400 hover:text-gray-200"
-          >
+          <button @click.stop="togglePicker" class="text-accent-focus">
             <StickerIcon style="height: 20px; width: 20px" />
           </button>
-          <button class="text-gray-400 hover:text-gray-200">
+          <button class="text-accent-focus">
             <ImageAddIcon style="height: 20px; width: 20px" />
           </button>
-          <button class="text-gray-400 hover:text-gray-200">
+          <button class="text-accent-focus">
             <AttachIcon style="height: 20px; width: 20px" />
           </button>
         </div>
       </div>
       <div
-        class="flex gap-1 border-2 border-slate-500 py-2 px-3 rounded-md items-center"
+        class="flex gap-1 border-2 border-accent border-opacity-70 py-2 px-3 rounded-md items-center"
       >
         <textarea
           ref="textarea"
           v-model="message"
           type="text"
           placeholder="Nhập tin nhắn"
-          class="w-full flex-1 bg-transparent text-white outline-none max-h-[100px] min-h-6 h-6 resize-none text-sm overflow-hidden"
+          class="w-full flex-1 bg-transparent outline-none max-h-[100px] min-h-6 h-6 resize-none text-sm overflow-hidden font-medium"
           @keypress="inputHandler"
         />
         <button @click="sendChatMessage">
-          <SendIcon style="font-size: 16px; color: white" />
+          <SendIcon style="font-size: 16px" class="text-accent-focus" />
         </button>
       </div>
     </div>
@@ -64,6 +61,7 @@ import StickerIcon from '~icons/mdi/sticker-emoji';
 import ImageAddIcon from '~icons/mdi/file-image-plus';
 import AttachIcon from '~icons/mdi/attachment';
 import MessageGroup from './MessageGroup.vue';
+import TheBackground from '../Utils/TheBackground.vue';
 
 defineProps({
   messages: {

@@ -1,6 +1,6 @@
 <template>
   <div
-    class="w-full aspect-4/3 flex flex-col gap-1 justify-center items-center bg-slate-800 py-3 md:py-4 cursor-pointer"
+    class="w-full aspect-4/3 flex flex-col gap-1 justify-center items-center bg-slate-800 py-2 md:py-4 cursor-pointer rounded-lg border border-gray-600"
     :class="[classes, isActive ? 'border-2 border-blue-400' : '']"
   >
     <div class="flex-1 px-4" v-if="imgSrc">
@@ -10,7 +10,7 @@
     <FontAwesomeIcon
       v-if="!imgSrc && icon"
       :icon="icon"
-      class="text-white text-2xl"
+      class="text-white text-md"
     />
     <div
       class="w-full text-white font-bold bg-slate-800 text-center text-xs leading-none"

@@ -14,6 +14,9 @@ module.exports = {
         '3s': 'repeat(3, minmax(200px, 1fr))',
         fluid: 'repeat(auto-fill, minmax(0, 1fr))',
       },
+      fontFamily: {
+        mont: ['Montserrat', 'sans-serif'],
+      },
     },
   },
   plugins: [require('daisyui')],

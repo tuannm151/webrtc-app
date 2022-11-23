@@ -16,7 +16,7 @@
         class="flex gap-2 items-center"
         :class="[sending ? 'justify-end' : '']"
       >
-        <span class="text-sm text-white font-medium leading-none">{{
+        <span class="text-sm text-base-content font-medium leading-none">{{
           sending ? 'Bạn' : message.user?.userName
         }}</span>
         <span
@@ -27,9 +27,7 @@
       <div
         class="flex flex-col gap-2 overflow-hidden"
         :class="[
-          sending
-            ? 'text-[#0b332b] font-semibold items-end'
-            : 'text-white items-start',
+          sending ? 'text-accent-content items-end' : 'text-white items-start',
         ]"
       >
         <p
@@ -38,7 +36,7 @@
           class="px-5 py-2 text-[15px] rounded-xl break-words max-w-full"
           :class="[
             sending
-              ? 'bg-[#04c295]'
+              ? 'bg-accent-focus'
               : 'bg-slate-600 rounded-tl-xl rounded-r-xl rounded-bl-sm',
           ]"
         >

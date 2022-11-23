@@ -1,6 +1,6 @@
 <template>
   <button
-    class="w-9 h-9 flex justify-center items-center"
+    class="w-9 h-9 flex justify-center items-center hover:border-2 hover:border-white hover:rounded-md"
     :class="[classes, iconColor]"
   >
     <FontAwesomeIcon :icon="iconClass" :class="[iconSize]" />

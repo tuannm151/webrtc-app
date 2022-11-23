@@ -3,9 +3,13 @@
     <label v-if="label" class="label">
       <span class="label-text font-bold">{{ label }}</span>
     </label>
-    <select class="select border-opacity-50" @change="selectHandler($event)">
-      <option v-if="isLoading">Đang tải ...</option>
-      <option v-if="!isLoading && options.length === 0" value="0">
+    <select
+      v-model="select"
+      class="select border-opacity-50"
+      @change="selectHandler($event)"
+    >
+      <option v-if="isLoading" value="">Đang tải ...</option>
+      <option v-if="!isLoading && options.length === 0" value="">
         Không tìm thấy thiết bị
       </option>
       <option
@@ -20,7 +24,9 @@
 </template>
 
 <script setup>
-defineProps({
+import { ref, watchEffect } from 'vue';
+
+const props = defineProps({
   label: {
     type: String,
   },
@@ -31,6 +37,7 @@ defineProps({
   defaultValue: {
     type: String,
     required: false,
+    default: undefined,
   },
   disabled: {
     type: Boolean,
@@ -46,9 +53,21 @@ defineProps({
   },
 });
 
+const select = ref(props.defaultValue || props.options?.[0]?.value || '');
+
+watchEffect(() => {
+  if (props.defaultValue) {
+    select.value = props.defaultValue;
+    return;
+  }
+  if (props.options?.[0]?.value) {
+    select.value = props.options?.[0]?.value;
+  }
+});
+
 const emit = defineEmits(['select']);
 const selectHandler = (event) => {
-  console.log(event.target.value);
+  console.log('selectHandler', event.target.value);
   emit('select', event.target.value);
 };
 </script>

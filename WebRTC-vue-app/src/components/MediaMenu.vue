@@ -9,7 +9,7 @@
       <FontAwesomeIcon icon="fa-solid fa-gear" class="text-2xl" />
       <h3 class="font-bold text-2xl mb-1">Lựa chọn thiết lập</h3>
     </div>
-    <div class="flex flex-1 gap-2 flex-wrap overflow-hidden">
+    <div class="flex flex-1 gap-2 flex-wrap">
       <div class="flex-1 flex-col gap-5">
         <div class="flex gap-2 md:gap-6 flex-col">
           <div class="flex flex-col gap-1 flex-1">
@@ -21,8 +21,8 @@
               />
               <MSelect
                 :options="audioInputs"
-                @select="(value) => selectDevice('audioinput', value)"
-                :isLoading="isLoadingDevice"
+                @select="(value) => selectDevice(DeviceType.AudioInput, value)"
+                :isLoading="isLoading"
               />
             </div>
           </div>
@@ -35,8 +35,8 @@
               />
               <MSelect
                 :options="audioOutputs"
-                @select="(value) => selectDevice('audiooutput', value)"
-                :isLoading="isLoadingDevice"
+                @select="(value) => selectDevice(DeviceType.AudioOutput, value)"
+                :isLoading="isLoading"
               />
             </div>
           </div>
@@ -46,14 +46,14 @@
               <FontAwesomeIcon icon="fa-solid fa-video" class="text-xl w-10" />
               <MSelect
                 :options="videoInputs"
-                @select="(value) => selectDevice('videoinput', value)"
-                :isLoading="isLoadingDevice"
+                @select="(value) => selectDevice(DeviceType.VideoInput, value)"
+                :isLoading="isLoading"
               />
             </div>
           </div>
         </div>
       </div>
-      <div class="flex flex-col flex-1 gap-4 min-w-[320px] items-center">
+      <div class="flex flex-col flex-1 gap-2 min-w-[320px] items-center">
         <div class="relative">
           <video
             ref="localVideo"
@@ -66,7 +66,7 @@
             ref="canvas"
             class="absolute w-16 h-10 bottom-2 left-2"
           ></canvas>
-          <audio ref="localAudio" muted autoplay></audio>
+          <audio :src-object.prop.camel="audioStream" muted autoplay></audio>
           <div
             class="absolute bottom-0 left-1/2 -translate-x-1/2 -translate-y-1/2 mx-auto"
           >
@@ -88,9 +88,12 @@
             </div>
           </div>
         </div>
-        <button class="btn btn-outline gap-2" @click="playAudioHandler">
-          Test Audio
+        <button
+          class="self-start btn btn-ghost btn-sm gap-2"
+          @click="playAudioHandler"
+        >
           <FontAwesomeIcon icon="fa-solid fa-volume-up" class="text-xl w-10" />
+          Test Audio
         </button>
         <audio ref="testAudio"></audio>
       </div>
@@ -106,35 +109,42 @@
 </template>
 
 <script setup>
-import { onMounted, onUnmounted, ref, watchEffect } from 'vue';
+import { ref, watchEffect } from 'vue';
 import { VueFinalModal } from 'vue-final-modal';
 import { useMediaStore } from '../store/mediaStore';
+import { DeviceType } from '@/enums/MediaEnum';
 import MSelect from './MSelect.vue';
 import ToggleDeviceBtn from './ToggleDeviceBtn.vue';
 import sound from '../assets/test_sound.mp3';
-const audioInputs = ref([]);
-const audioOutputs = ref([]);
-const videoInputs = ref([]);
+import useMedia from '../hooks/useMedia';
+import { MediaType } from '../enums/MediaEnum';
+
+const {
+  audioInputs,
+  audioOutputs,
+  videoInputs,
+  audioStream,
+  closeStream,
+  isLoading,
+  getStream,
+} = useMedia({ init: true });
 const mediaStore = useMediaStore();
 const showModal = ref(true);
-const isLoadingDevice = ref(false);
-const localVideo = ref(null);
-const localAudio = ref(null);
-const videoStream = ref(null);
-const audioStream = ref(null);
 const isCameraOn = ref(false);
 const isMicrophoneOn = ref(false);
 const canvas = ref(null);
 const testAudio = ref(null);
+const localVideo = ref(null);
 
 const emit = defineEmits(['start']);
 
 const onStartHandler = () => {
-  if (isLoadingDevice.value) {
+  if (isLoading.value) {
     return;
   }
   emit('start');
 };
+console.log('rerun');
 
 const playAudioHandler = () => {
   if (!mediaStore.audioOutputDevice) return;
@@ -143,6 +153,7 @@ const playAudioHandler = () => {
   testAudio.value.play();
 };
 
+let reqFrame = null;
 const visualizeAudioStream = () => {
   // visualize audio stream in circular shape
   const audioCtx = new AudioContext();
@@ -158,7 +169,7 @@ const visualizeAudioStream = () => {
   const draw = () => {
     // symetric spectrum
 
-    requestAnimationFrame(draw);
+    reqFrame = requestAnimationFrame(draw);
     analyser.getByteFrequencyData(dataArray);
 
     canvasCtx.clearRect(0, 0, WIDTH, HEIGHT);
@@ -174,17 +185,23 @@ const visualizeAudioStream = () => {
       canvasCtx.fillRect(x, HEIGHT - barHeight / 2, barWidth, barHeight / 2);
       x += barWidth + 1;
     }
+    console.log('draw');
   };
-  draw();
+  reqFrame = requestAnimationFrame(draw);
+};
+
+const clearCanvas = () => {
+  const canvasCtx = canvas.value.getContext('2d');
+  canvasCtx.clearRect(0, 0, canvas.value.width, canvas.value.height);
 };
 
 const selectDevice = (kind, deviceId) => {
   mediaStore.selectDevice(kind, deviceId);
-  if (kind === 'videoinput' && isCameraOn.value) {
+  if (kind === DeviceType.VideoInput && isCameraOn.value) {
     isCameraOn.value = false;
     toggleCamera();
   }
-  if (kind === 'audioinput' && isMicrophoneOn.value) {
+  if (kind === DeviceType.AudioInput && isMicrophoneOn.value) {
     isMicrophoneOn.value = false;
     toggleMicrophone();
   }
@@ -196,138 +213,63 @@ const toggleCamera = async () => {
   }
 
   if (isCameraOn.value) {
-    videoStream.value.getTracks().forEach((track) => track.stop());
-    videoStream.value = null;
-    localVideo.value.srcObject = null;
+    closeStream({ type: MediaType.Video });
     isCameraOn.value = false;
     return;
   }
-  const stream = await navigator.mediaDevices.getUserMedia({
+  localVideo.value.srcObject = await getStream({
     video: {
       deviceId: mediaStore.videoInputDevice,
     },
   });
-  if (localVideo.value.srcObject) {
-    localVideo.value.srcObject = stream;
-  }
-
-  videoStream.value = stream;
   isCameraOn.value = true;
-  localVideo.value.srcObject = stream;
 };
 
 const toggleMicrophone = async () => {
   if (!mediaStore.audioInputDevice) {
     return;
   }
-  console.log('toggleMicrophone');
   if (isMicrophoneOn.value) {
-    audioStream.value.getTracks().forEach((track) => track.stop());
-    audioStream.value = null;
+    closeStream({ type: MediaType.Audio });
     isMicrophoneOn.value = false;
+    cancelAnimationFrame(reqFrame);
+    clearCanvas();
     return;
   }
-  const stream = await navigator.mediaDevices.getUserMedia({
+  await getStream({
     audio: {
       deviceId: mediaStore.audioInputDevice,
     },
   });
-  audioStream.value = stream;
-  if (localAudio.value.srcObject) {
-    localAudio.value.srcObject = stream;
-  }
   isMicrophoneOn.value = true;
   visualizeAudioStream();
 };
 
-const initDevices = async () => {
-  try {
-    isLoadingDevice.value = true;
-    const stream = await navigator.mediaDevices.getUserMedia({
-      audio: true,
-      video: true,
-    });
-
-    const devices = await navigator.mediaDevices.enumerateDevices();
-    devices.forEach((device) => {
-      const { deviceId } = device;
-      switch (device.kind) {
-        case 'audioinput':
-          audioInputs.value.push({
-            label: device.label || `Microphone ${audioInputs.value.length + 1}`,
-            value: deviceId,
-          });
-          break;
-        case 'audiooutput':
-          audioOutputs.value.push({
-            label: device.label || `Speaker ${audioOutputs.value.length + 1}`,
-            value: deviceId,
-          });
-          break;
-        case 'videoinput':
-          videoInputs.value.push({
-            label: device.label || `Camera ${videoInputs.value.length + 1}`,
-            value: deviceId,
-          });
-          break;
-      }
-    });
-    stream.getTracks().forEach(function (track) {
-      //find current used device and set in store
-      const device = devices.find(
-        (d) => d.deviceId === track.getSettings().deviceId
-      );
-      if (device.kind === 'audioinput' && !mediaStore.audioInputDevice) {
-        mediaStore.audioInputDevice = device.deviceId;
-      }
-      if (device.kind === 'videoinput' && !mediaStore.videoInputDevice) {
-        mediaStore.videoInputDevice = device.deviceId;
-      }
-      track.stop();
-    });
-
-    if (audioOutputs.value.length > 0) {
-      mediaStore.audioOutputDevice = audioOutputs.value[0].value;
-    }
-    if (videoInputs.value.length > 0) {
-      toggleCamera();
-    }
-    if (audioInputs.value.length > 0) {
-      toggleMicrophone();
-    }
-  } catch (error) {
-    console.log(error);
-  } finally {
-    isLoadingDevice.value = false;
+watchEffect(() => {
+  if (audioOutputs.value.length > 0) {
+    mediaStore.audioOutputDevice = audioOutputs.value[0].value;
   }
-};
-
-const unWatchVideo = watchEffect(() => {
-  if (videoInputs.value.length > 0 && localAudio.value?.srcObject) {
-    toggleCamera();
-    unWatchVideo();
+  if (videoInputs.value.length > 0) {
+    mediaStore.videoInputDevice = videoInputs.value[0].value;
+  }
+  if (audioInputs.value.length > 0) {
+    mediaStore.audioInputDevice = audioInputs.value[0].value;
   }
 });
 
-const unWatchAudio = watchEffect(() => {
-  if (audioInputs.value.length > 0 && localVideo.value?.srcObject) {
-    toggleMicrophone();
-    unWatchAudio();
-  }
-});
+// const unWatchVideo = watchEffect(() => {
+//   if (videoInputs.value.length > 0 && localAudio.value) {
+//     toggleCamera();
+//     unWatchVideo();
+//   }
+// });
 
-onMounted(() => {
-  initDevices();
-});
-
-onUnmounted(() => {
-  if (videoStream.value) {
-    videoStream.value.getTracks().forEach((track) => track.stop());
-  }
-  if (audioStream.value) {
-    audioStream.value.getTracks().forEach((track) => track.stop());
-  }
-});
+// const unWatchAudio = watchEffect(() => {
+//   if (audioInputs.value.length > 0 && localVideo.value) {
+//     toggleMicrophone();
+//     unWatchAudio();
+//   }
+// });
 </script>
 
 <style lang="scss" scoped></style>

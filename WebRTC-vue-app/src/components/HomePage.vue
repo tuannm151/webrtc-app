@@ -1,8 +1,8 @@
 <template>
   <div
-    class="mockup-window mt-10 rounded-xl bg-slate-600 h-4/5 w-full md:w-4/5 m-4"
+    class="mockup-window mt-10 rounded-xl bg-base-200 h-4/5 w-full md:w-4/5 m-4"
   >
-    <div class="flex bg-slate-700 h-full justify-center items-center">
+    <div class="flex bg-base-100 h-full justify-center items-center">
       <div
         class="flex flex-col mb-10 gap-8 justify-center items-center w-full md:w-[270px] p-4"
       >
@@ -10,14 +10,17 @@
           <input
             type="text"
             placeholder="Nhập tên của bạn"
-            class="input input-bordered w-full max-w-xs"
+            class="input border-2 input-bordered w-full max-w-xs"
             v-model="userName"
           />
         </div>
-        <button class="btn btn-outline btn-warning w-full">
+        <button class="btn border-2 btn-outline btn-warning w-full">
           Tạo phòng mới
         </button>
-        <button @click="joinRoom" class="btn btn-outline btn-warning w-full">
+        <button
+          @click="joinRoom"
+          class="btn border-2 btn-outline btn-warning w-full"
+        >
           Tham gia phòng
         </button>
       </div>

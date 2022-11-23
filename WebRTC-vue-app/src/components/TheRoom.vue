@@ -1,5 +1,9 @@
 <template>
-  <div class="w-full h-full relative flex justify-center items-center">
+  <div
+    ref="roomContainer"
+    class="w-full h-full relative flex justify-center items-center"
+  >
+    <TheBackground classes="bg-base-300" />
     <div>
       <audio ref="localAudio" class="hidden" autoplay></audio>
       <audio
@@ -10,6 +14,7 @@
         :src-object.prop.camel="peer.audioStream"
       />
     </div>
+    <MediaSetting v-if="isSettingOpen" @close="toggleSetting" />
     <SharedDrawer
       :streams="sharedStreamInfos"
       :current-stream-id="
@@ -23,7 +28,7 @@
     />
 
     <div
-      class="w-full h-full overflow-hidden"
+      class="w-full h-full overflow-hidden pb-14 transition-transform"
       :class="type === 'xs' && isChatOpen ? 'hidden' : ''"
     >
       <VideoGrid
@@ -49,7 +54,6 @@
 
     <Transition name="control">
       <ControlBar
-        v-if="showUI"
         :isMicrophoneOn="isMicrophoneOn"
         :isCameraOn="isCameraOn"
         :isChatOpen="isChatOpen"
@@ -58,6 +62,8 @@
         @toggle-chat="toggleChat"
         @share-screen="startSharing"
         @hang-up="handleHangUp"
+        @setting="toggleSetting"
+        @fullscreen="toggleFullscreen"
       />
     </Transition>
   </div>
@@ -79,6 +85,8 @@ import ChatTab from './Chat/ChatTab.vue';
 import { generateBgColor } from '../utils/stringUtils';
 import ControlBar from './ControlBar.vue';
 import useBreakpoints from '../hooks/useBreakpoints';
+import MediaSetting from './MediaSetting/MediaSetting.vue';
+import TheBackground from './Utils/TheBackground.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -98,6 +106,7 @@ const sharedStreamInfos = ref([]);
 const isGalleryView = ref(true);
 const isChatOpen = ref(false);
 const isDrawerOpen = ref(false);
+const isSettingOpen = ref(false);
 const currentSharedStream = ref(null);
 const wsConn = reactive(
   new WebsocketClient(import.meta.env.VITE_CONNECTION_URL)
@@ -109,6 +118,7 @@ const userData = {
 };
 const { type } = useBreakpoints();
 const pcManager = reactive(new PeerConnectionManager(wsConn, userData));
+const roomContainer = ref(null);
 const toast = useToast();
 const isCameraOn = ref(false);
 const isMicrophoneOn = ref(false);
@@ -158,9 +168,15 @@ const toggleDrawer = () => {
   isDrawerOpen.value = !isDrawerOpen.value;
 };
 
+const toggleSetting = () => {
+  console.log('toggleSetting');
+  isSettingOpen.value = !isSettingOpen.value;
+};
+
 const startSharing = async () => {
   try {
-    const stream = await pcManager.startCapture();
+    const stream = await pcManager.startSharingScreen();
+
     isGalleryView.value = false;
     currentSharedStream.value = {
       stream,
@@ -220,6 +236,17 @@ const handleSwitchStream = (data) => {
   }
   // request new stream
   pcManager.requestScreen({ socketId, streamId });
+};
+
+const toggleFullscreen = () => {
+  const elem = roomContainer.value;
+  if (!document.fullscreenElement) {
+    elem.requestFullscreen().catch((err) => {
+      console.error(err);
+    });
+  } else {
+    document.exitFullscreen();
+  }
 };
 
 const appendChatMessage = (message) => {
@@ -293,22 +320,6 @@ const removeSharedStream = ({ type, id }) => {
 const handleDrawerStopShare = (streamId) => {
   console.log('handleDrawerStopShare', streamId);
   pcManager.stopSharingStream(streamId);
-};
-
-const timeout = ref(null);
-const handleMouseMove = () => {
-  if (timeout.value) {
-    clearTimeout(timeout.value);
-  }
-
-  if (!showUI.value) {
-    showUI.value = true;
-  }
-  // hide control bar after 5s
-  const delayHideTime = 5 * 1000;
-  timeout.value = setTimeout(() => {
-    showUI.value = false;
-  }, delayHideTime);
 };
 
 const initConn = async () => {
@@ -409,10 +420,9 @@ const initConn = async () => {
 };
 onMounted(() => {
   initConn();
-  window.addEventListener('mousemove', handleMouseMove);
 });
 onUnmounted(() => {
-  window.removeEventListener('mousemove', handleMouseMove);
+  wsConn.close();
 });
 </script>
 
@@ -430,7 +440,7 @@ onUnmounted(() => {
 
 .chat-enter-active,
 .chat-leave-active {
-  transition: all 0.3s ease;
+  transition: all 0.4s ease;
   // width: 350px;
   transform: translateX(0);
 }

@@ -1,28 +1,30 @@
 <template>
   <div
     ref="videoContainer"
-    class="w-full h-full relative flex-1 flex-wrap md:flex-nowrap pb-10 md:pb-0"
+    class="w-full h-full pb-10 md:pb-0 relative flex justify-center items-center"
   >
-    <VideoBox
-      userName="Bạn"
-      :audioOn="isMicrophoneOn"
-      :videoOn="isCameraOn"
-      :stream="localStream"
-      :width="maxWidth"
-      :height="maxHeight"
-      :isLocal="true"
-    />
-    <VideoBox
-      v-for="peer in peers"
-      :key="peer.id"
-      :userName="peer.data.UserName"
-      :audioOn="peer.audioOn"
-      :videoOn="peer.videoOn"
-      :stream="peer.videoStream"
-      :width="maxWidth"
-      :height="maxHeight"
-      :avatarBg="peer.data.avatarBg"
-    />
+    <div ref="videoGrid">
+      <VideoBox
+        userName="Bạn"
+        :audioOn="isMicrophoneOn"
+        :videoOn="isCameraOn"
+        :stream="localStream"
+        :width="maxWidth"
+        :height="maxHeight"
+        :isLocal="true"
+      />
+      <VideoBox
+        v-for="peer in peers"
+        :key="peer.id"
+        :userName="peer.data.UserName"
+        :audioOn="peer.audioOn"
+        :videoOn="peer.videoOn"
+        :stream="peer.videoStream"
+        :width="maxWidth"
+        :height="maxHeight"
+        :avatarBg="peer.data.avatarBg"
+      />
+    </div>
   </div>
 </template>
 
@@ -32,6 +34,7 @@ import useScreenFit from '../hooks/useScreenFit';
 import VideoBox from './VideoBox.vue';
 
 const videoContainer = ref(null);
+const videoGrid = ref(null);
 const totalWidth = ref(0);
 const totalHeight = ref(0);
 
@@ -84,15 +87,13 @@ watchEffect(() => {
   const row = Math.floor(totalHeight.value / maxHeight.value);
   const column = Math.floor(totalWidth.value / maxWidth.value);
   if (row === 1) {
-    videoContainer.value.style.justifyContent = 'center';
-    videoContainer.value.style.alignItems = 'center';
-    videoContainer.value.style.display = 'flex';
+    videoGrid.value.style.justifyContent = 'center';
+    videoGrid.value.style.alignItems = 'center';
+    videoGrid.value.style.display = 'flex';
   } else if (row > 1 && column > 1) {
-    videoContainer.value.style.display = 'grid';
-    videoContainer.value.style.gridTemplateColumns = `repeat(${column}, 1fr)`;
-    videoContainer.value.style.gridTemplateRows = `repeat(${row}, 1fr)`;
-    // justify-items: center;
-    videoContainer.value.style.justifyItems = 'center';
+    videoGrid.value.style.display = 'grid';
+    videoGrid.value.style.gridTemplateColumns = `repeat(${column}, 1fr)`;
+    videoGrid.value.style.gridTemplateRows = `repeat(${row}, 1fr)`;
   }
 });
 

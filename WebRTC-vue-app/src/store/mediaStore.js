@@ -4,6 +4,12 @@ export const useMediaStore = defineStore('media', () => {
   const audioInputDevice = ref(null);
   const audioOutputDevice = ref(null);
   const videoInputDevice = ref(null);
+
+  const audioSetting = ref({
+    noiseSuppression: true,
+    echoCancellation: true,
+    autoGainControl: false,
+  });
   const selectDevice = (kind, value) => {
     switch (kind) {
       case 'audioinput':
@@ -17,10 +23,18 @@ export const useMediaStore = defineStore('media', () => {
         break;
     }
   };
+  const changeAudioSetting = (setting) => {
+    audioSetting.value = {
+      ...audioSetting.value,
+      ...setting,
+    };
+  };
   return {
     audioInputDevice,
     audioOutputDevice,
     videoInputDevice,
     selectDevice,
+    audioSetting,
+    changeAudioSetting,
   };
 });

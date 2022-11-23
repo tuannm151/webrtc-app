@@ -24,9 +24,8 @@ export class WebsocketClient {
     };
 
     this.socket.onmessage = (message) => {
-      console.log('Websocket message received', message);
       const wsMessage = JSON.parse(message.data);
-      const data = JSON.parse(wsMessage.Data);
+      const payload = JSON.parse(wsMessage.Data);
       const { ActionType } = wsMessage;
 
       // find the event handler for this message type
@@ -35,7 +34,7 @@ export class WebsocketClient {
         return;
       }
 
-      eventHandler(wsMessage, data);
+      eventHandler(wsMessage, payload);
     };
   }
   onConnected() {}
@@ -70,7 +69,7 @@ export class WebsocketClient {
   }
   _heartbeat() {
     if (!this.isConnected()) {
-      console.log('Websocket not connected. Skipping heartbeat');
+      console.error('Websocket not connected. Skipping heartbeat');
       return;
     }
     this.send({

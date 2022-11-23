@@ -10,8 +10,8 @@ export default class PeerConnectionManager {
     this.clientData = clientData;
 
     // khởi tạo một kết nối p2p khi một user kết nối vào room
-    this.wsConn.on('Connected', async (message, data) => {
-      console.log('Connected', `${data.UserName} joined`);
+    this.wsConn.on('Connected', async (message, payload) => {
+      console.log('Connected', `${payload.UserName} joined`);
 
       const senderSocketId = message.SourceId;
       // await this._initPeers(senderSocketId);
@@ -22,13 +22,13 @@ export default class PeerConnectionManager {
         isSender: true,
         clientData,
       });
-      this.onConnection({ id: senderSocketId, data });
-      this.connections[senderSocketId] = { peer, clientData: data };
+      this.onConnection({ id: senderSocketId, data: payload });
+      this.connections[senderSocketId] = { peer, clientData: payload };
     });
 
-    this.wsConn.on('Negotiate', async (message, data) => {
+    this.wsConn.on('Negotiate', async (message, payload) => {
       const senderSocketId = message.SourceId;
-      const { clientData: remoteClientData } = data;
+      const { clientData: remoteClientData } = payload;
       if (!this.connections[senderSocketId]) {
         const peer = this._initPeer({
           socketId: senderSocketId,
@@ -41,7 +41,7 @@ export default class PeerConnectionManager {
         this.connections[senderSocketId].clientData = remoteClientData;
         this.onConnection({ id: senderSocketId, data: remoteClientData });
       }
-      this.connections[senderSocketId].peer.gotConnectionMessage(data);
+      this.connections[senderSocketId].peer.gotConnectionMessage(payload);
     });
 
     // khi một user disconnect close peer connection
@@ -54,9 +54,15 @@ export default class PeerConnectionManager {
       this.onPeerDestroyed(message.SourceId);
     });
 
-    this.wsConn.on('ChatMessage', (message, data) => {
+    this.wsConn.on('ChatMessage', (message, payload) => {
       const senderSocketId = message.SourceId;
-      this.onReceivedChatMessage({ id: senderSocketId, data });
+      this.onReceivedChatMessage({ id: senderSocketId, data: payload });
+    });
+
+    this.wsConn.on('MediaState', (message, payload) => {
+      const senderSocketId = message.SourceId;
+      const { type, data } = payload;
+      this.onActionMessage({ socketId: senderSocketId, type, data });
     });
   }
 
@@ -72,6 +78,74 @@ export default class PeerConnectionManager {
   sendToAllChannels = (message) => {
     Object.values(this.connections).forEach(({ peer }) => {
       peer.sendMessageChannel(message);
+    });
+  };
+
+  sendToAllSockets = (message) => {
+    this.wsConn.send(message);
+  };
+
+  sendMediaState = (state) => {
+    this.sendToAllSockets({
+      ActionType: 'MediaState',
+      Data: JSON.stringify(state),
+    });
+  };
+
+  onActionMessage = ({ type, data, socketId }) => {
+    const peer = this.getPeer(socketId);
+
+    if (!peer) {
+      console.error('No peer found for socketId', socketId);
+      return;
+    }
+    if (type === 'action-media') {
+      const mediaState = {};
+      if (data.type === 'audio') {
+        mediaState.audioOn = data.active;
+      }
+      if (data.type === 'video') {
+        mediaState.videoOn = data.active;
+      }
+      this.onPeerStateChange(socketId, mediaState);
+    }
+
+    if (type === 'action-stream') {
+      const { streamId, type: action } = data;
+      if (action === 'start') {
+        peer.shareStreamIds.push(streamId);
+        this.onRemoteStartStream({ socketId, streamId });
+      }
+      if (action === 'request') {
+        const stream = this.localShareStream.find(
+          (stream) => stream.id === streamId
+        );
+        if (!stream) return;
+        peer.startStream(stream);
+      }
+      if (action === 'stop') {
+        this.onRemoteStopStream({ socketId, streamId });
+      }
+      if (action === 'request-stop') {
+        // check if stream is exist in localShareStream
+        const stream = this.localShareStream.find(
+          (stream) => stream.id === streamId
+        );
+        if (stream) {
+          console.log('stop sending stream', streamId);
+          peer.stopStream(stream);
+        }
+      }
+    }
+  };
+
+  getPeer = (socketId) => {
+    return this.connections[socketId];
+  };
+
+  closeAllPeers = () => {
+    Object.values(this.connections).forEach(({ peer }) => {
+      peer.close();
     });
   };
 
@@ -117,46 +191,6 @@ export default class PeerConnectionManager {
 
       this.onPeerStateChange(socketId, newState);
     };
-    peer.onActionMessage = ({ type, data }) => {
-      if (type === 'action-media') {
-        const mediaState = {};
-        if (data.type === 'audio') {
-          mediaState.audioOn = data.active;
-        }
-        if (data.type === 'video') {
-          mediaState.videoOn = data.active;
-        }
-        this.onPeerStateChange(socketId, mediaState);
-      }
-
-      if (type === 'action-stream') {
-        const { streamId, type: action } = data;
-        if (action === 'start') {
-          peer.shareStreamIds.push(streamId);
-          this.onRemoteStartStream({ socketId, streamId });
-        }
-        if (action === 'request') {
-          const stream = this.localShareStream.find(
-            (stream) => stream.id === streamId
-          );
-          if (!stream) return;
-          peer.startStream(stream);
-        }
-        if (action === 'stop') {
-          this.onRemoteStopStream({ socketId, streamId });
-        }
-        if (action === 'request-stop') {
-          // check if stream is exist in localShareStream
-          const stream = this.localShareStream.find(
-            (stream) => stream.id === streamId
-          );
-          if (stream) {
-            console.log('stop sending stream', streamId);
-            peer.stopStream(stream);
-          }
-        }
-      }
-    };
     return peer;
   };
 
@@ -179,7 +213,7 @@ export default class PeerConnectionManager {
     });
   };
 
-  startCapture = async () => {
+  startSharingScreen = async () => {
     // capture screen
     const stream = await navigator.mediaDevices.getDisplayMedia({
       video: {
@@ -187,7 +221,7 @@ export default class PeerConnectionManager {
       },
       audio: true,
     });
-    this.sendToAllChannels({
+    this.sendMediaState({
       type: 'action-stream',
       data: {
         type: 'start',
@@ -217,11 +251,12 @@ export default class PeerConnectionManager {
     this.localShareStream = this.localShareStream.filter(
       (stream) => stream.id !== streamId
     );
-    this.sendToAllChannels({
+    this.sendMediaState({
       type: 'action-stream',
       data: {
         type: 'stop',
-        streamId,
+        streamId: stream.id,
+        notification: true,
       },
     });
     console.log('stop sharing stream', streamId);
@@ -255,7 +290,7 @@ export default class PeerConnectionManager {
       }
       this.localVideoStream.getTracks().forEach((track) => track.stop());
       this.localVideoStream = undefined;
-      this.sendToAllChannels({
+      this.sendMediaState({
         type: 'action-media',
         data: {
           type: 'video',
@@ -269,7 +304,7 @@ export default class PeerConnectionManager {
       }
       this.localAudioStream.getTracks().forEach((track) => track.stop());
       this.localAudioStream = undefined;
-      this.sendToAllChannels({
+      this.sendMediaState({
         type: 'action-media',
         data: {
           type: 'audio',
