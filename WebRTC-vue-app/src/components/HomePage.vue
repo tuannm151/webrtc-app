@@ -43,7 +43,9 @@ const joinRoom = () => {
     // set user name to store
     userStore.userName = userName.value || 'Ẩn danh';
     // set user name to local storage
-    localStorage.setItem('UserName', userName.value);
+    if (userName.value) {
+      localStorage.setItem('UserName', userName.value);
+    }
   } catch (error) {
     console.log(error);
   }

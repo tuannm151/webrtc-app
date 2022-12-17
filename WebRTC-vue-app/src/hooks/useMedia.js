@@ -1,7 +1,7 @@
 import { onMounted, onUnmounted, ref } from 'vue';
 import { MediaType } from '../enums/MediaEnum';
 
-export default function useMedia({ init = false, closeOnInit = true }) {
+export default function useMedia({ init = false }) {
   const audioInputs = ref([]);
   const audioOutputs = ref([]);
   const videoInputs = ref([]);
@@ -11,6 +11,9 @@ export default function useMedia({ init = false, closeOnInit = true }) {
   const error = ref(null);
   const getDevices = async () => {
     const devices = await navigator.mediaDevices.enumerateDevices();
+    audioInputs.value = [];
+    audioOutputs.value = [];
+    videoInputs.value = [];
     devices.forEach((device) => {
       const { deviceId } = device;
       switch (device.kind) {
@@ -93,11 +96,9 @@ export default function useMedia({ init = false, closeOnInit = true }) {
       isLoading.value = true;
       if (init) {
         await getStream({ audio: true, video: true });
-      }
-      await getDevices();
-      if (init && closeOnInit) {
         closeStream();
       }
+      await getDevices();
     } catch (e) {
       console.error(e);
       error.value = e?.message || 'Error getting media devices';

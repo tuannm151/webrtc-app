@@ -62,6 +62,18 @@
             autoplay
             muted
           ></video>
+          <div
+            v-if="isLoading || error"
+            class="absolute text-lg font-bold top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
+          >
+            {{
+              isLoading
+                ? 'Đang tải...'
+                : error
+                ? 'Có lỗi đầu vào. Vui lòng kiểm tra thiết bị'
+                : ''
+            }}
+          </div>
           <canvas
             ref="canvas"
             class="absolute w-16 h-10 bottom-2 left-2"
@@ -132,6 +144,7 @@ const mediaStore = useMediaStore();
 const showModal = ref(true);
 const isCameraOn = ref(false);
 const isMicrophoneOn = ref(false);
+const error = ref(null);
 const canvas = ref(null);
 const testAudio = ref(null);
 const localVideo = ref(null);
@@ -197,6 +210,12 @@ const clearCanvas = () => {
 
 const selectDevice = (kind, deviceId) => {
   mediaStore.selectDevice(kind, deviceId);
+
+  // reset trạng thái lỗi nếu có
+  if (error.value) {
+    error.value = null;
+  }
+
   if (kind === DeviceType.VideoInput && isCameraOn.value) {
     isCameraOn.value = false;
     toggleCamera();
@@ -208,41 +227,50 @@ const selectDevice = (kind, deviceId) => {
 };
 
 const toggleCamera = async () => {
-  if (!mediaStore.videoInputDevice) {
-    return;
-  }
+  try {
+    if (!mediaStore.videoInputDevice) {
+      return;
+    }
 
-  if (isCameraOn.value) {
-    closeStream({ type: MediaType.Video });
-    isCameraOn.value = false;
-    return;
+    if (isCameraOn.value) {
+      closeStream({ type: MediaType.Video });
+      isCameraOn.value = false;
+      return;
+    }
+    localVideo.value.srcObject = await getStream({
+      video: {
+        deviceId: mediaStore.videoInputDevice,
+      },
+    });
+    isCameraOn.value = true;
+  } catch (err) {
+    localVideo.value.srcObject = null;
+    error.value = err;
   }
-  localVideo.value.srcObject = await getStream({
-    video: {
-      deviceId: mediaStore.videoInputDevice,
-    },
-  });
-  isCameraOn.value = true;
 };
 
 const toggleMicrophone = async () => {
-  if (!mediaStore.audioInputDevice) {
-    return;
+  try {
+    if (!mediaStore.audioInputDevice) {
+      return;
+    }
+    if (isMicrophoneOn.value) {
+      closeStream({ type: MediaType.Audio });
+      isMicrophoneOn.value = false;
+      cancelAnimationFrame(reqFrame);
+      clearCanvas();
+      return;
+    }
+    await getStream({
+      audio: {
+        deviceId: mediaStore.audioInputDevice,
+      },
+    });
+    isMicrophoneOn.value = true;
+    visualizeAudioStream();
+  } catch (err) {
+    error.value = err;
   }
-  if (isMicrophoneOn.value) {
-    closeStream({ type: MediaType.Audio });
-    isMicrophoneOn.value = false;
-    cancelAnimationFrame(reqFrame);
-    clearCanvas();
-    return;
-  }
-  await getStream({
-    audio: {
-      deviceId: mediaStore.audioInputDevice,
-    },
-  });
-  isMicrophoneOn.value = true;
-  visualizeAudioStream();
 };
 
 watchEffect(() => {

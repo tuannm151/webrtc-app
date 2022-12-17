@@ -40,26 +40,14 @@
       </ul>
     </div>
     <div class="flex-1 p-10">
-      <AudioSetting
-        v-if="currentTab === SettingTab.Audio"
-        :audio-inputs="audioInputs"
-        :audio-outputs="audioOutputs"
-        :isLoading="isLoading"
-        :audio-stream="audioStream"
-      />
-      <VideoSetting
-        v-if="currentTab === SettingTab.Video"
-        :video-inputs="videoInputs"
-        :is-loading="isLoading"
-        :video-stream="videoStream"
-        @select-device="selectDevice"
-      />
+      <AudioSetting v-if="currentTab === SettingTab.Audio" />
+      <VideoSetting v-if="currentTab === SettingTab.Video" />
     </div>
   </VueFinalModal>
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue';
+import { ref } from 'vue';
 import { VueFinalModal } from 'vue-final-modal';
 import IconSpeaker from '~icons/mdi/speaker';
 import IconVideo from '~icons/mdi/video';
@@ -67,51 +55,15 @@ import IconClose from '~icons/mdi/close-circle';
 import SettingItem from './SettingItem.vue';
 import IconTheme from '~icons/mdi/cookie-edit';
 import AudioSetting from './AudioSetting.vue';
-import useMedia from '../../hooks/useMedia';
 import { SettingTab } from '@/enums/AppEnum';
-import { useMediaStore } from '../../store/mediaStore';
 import VideoSetting from './VideoSetting.vue';
-import { DeviceType, MediaType } from '../../enums/MediaEnum';
-
-const selectDevice = (type, value) => {
-  if (type === DeviceType.VideoInput) {
-    mediaStore.videoInputDevice = value;
-    closeStream({ type: MediaType.Video });
-    getStream({
-      video: {
-        deviceId: value,
-      },
-    });
-  }
-};
 
 const showModal = ref(true);
-const {
-  audioInputs,
-  audioOutputs,
-  videoInputs,
-  videoStream,
-  audioStream,
-  isLoading,
-  closeStream,
-  getStream,
-} = useMedia({ init: false });
 
-const mediaStore = useMediaStore();
 const currentTab = ref(SettingTab.Audio);
 
 const switchTab = async (tab) => {
   if (currentTab.value === tab) return;
-  if (tab === SettingTab.Video) {
-    getStream({
-      video: {
-        deviceId: mediaStore.videoInputDevice,
-      },
-    });
-  }
-  if (currentTab.value === SettingTab.Video) {
-    closeStream({ type: MediaType.Video });
-  }
   currentTab.value = tab;
 };
 
@@ -120,14 +72,6 @@ const emit = defineEmits(['close']);
 const handleClose = () => {
   emit('close');
 };
-
-onMounted(async () => {
-  await getStream({
-    audio: {
-      deviceId: mediaStore.audioInputDevice,
-    },
-  });
-});
 </script>
 
 <style lang="scss" scoped></style>

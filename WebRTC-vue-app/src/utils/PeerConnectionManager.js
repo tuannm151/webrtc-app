@@ -62,18 +62,18 @@ export default class PeerConnectionManager {
     this.wsConn.on('MediaState', (message, payload) => {
       const senderSocketId = message.SourceId;
       const { type, data } = payload;
-      this.onActionMessage({ socketId: senderSocketId, type, data });
+      this.onMediaMessage({ socketId: senderSocketId, type, data });
     });
   }
 
-  onConnection = () => {};
-  onPeerStateChange = () => {};
-  onPeerDestroyed = () => {};
-  onGotScreenStream = () => {};
-  onRemoteStartStream = () => {};
-  onRemoteStopStream = () => {};
-  onStopSharingStream = () => {};
-  onReceivedChatMessage = () => {};
+  onConnection = () => { };
+  onPeerStateChange = () => { };
+  onPeerDestroyed = () => { };
+  onGotScreenStream = () => { };
+  onRemoteStartStream = () => { };
+  onRemoteStopStream = () => { };
+  onStopSharingStream = () => { };
+  onReceivedChatMessage = () => { };
 
   sendToAllChannels = (message) => {
     Object.values(this.connections).forEach(({ peer }) => {
@@ -92,7 +92,7 @@ export default class PeerConnectionManager {
     });
   };
 
-  onActionMessage = ({ type, data, socketId }) => {
+  onMediaMessage = ({ type, data, socketId }) => {
     const peer = this.getPeer(socketId);
 
     if (!peer) {
@@ -117,10 +117,12 @@ export default class PeerConnectionManager {
         this.onRemoteStartStream({ socketId, streamId });
       }
       if (action === 'request') {
+        console.log('received request stream', streamId);
         const stream = this.localShareStream.find(
           (stream) => stream.id === streamId
         );
         if (!stream) return;
+        console.log('start sending stream', streamId);
         peer.startStream(stream);
       }
       if (action === 'stop') {
@@ -140,7 +142,7 @@ export default class PeerConnectionManager {
   };
 
   getPeer = (socketId) => {
-    return this.connections[socketId];
+    return this.connections[socketId]?.peer;
   };
 
   closeAllPeers = () => {
@@ -174,8 +176,16 @@ export default class PeerConnectionManager {
       });
     };
 
+    peer.gotPeerMessage = (message) => {
+      const { type, data } = message;
+      if (type.startsWith('action')) {
+        this.onMediaMessage({ socketId, type, data });
+      }
+    };
+
     peer.gotStream = ({ stream, trackType }) => {
       if (peer.shareStreamIds.includes(stream.id)) {
+        console.log('got screen stream', stream.id);
         this.onGotScreenStream({ id: socketId, stream });
         return;
       }

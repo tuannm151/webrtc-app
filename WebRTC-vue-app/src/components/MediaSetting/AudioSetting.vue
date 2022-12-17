@@ -58,30 +58,13 @@
 </template>
 
 <script setup>
-import { onUnmounted, ref, watchEffect } from 'vue';
-import { DeviceType } from '../../enums/MediaEnum';
+import { onUnmounted, ref, watchEffect, onMounted } from 'vue';
+import { DeviceType, MediaType } from '../../enums/MediaEnum';
 import { useMediaStore } from '../../store/mediaStore';
 import MSelect from '../MSelect.vue';
 import sound from '@/assets/test_sound.mp3';
 import MToggler from '@/components/Utils/MToggler.vue';
-const props = defineProps({
-  audioInputs: {
-    type: Array,
-    required: true,
-  },
-  audioOutputs: {
-    type: Array,
-    required: true,
-  },
-  isLoading: {
-    type: Boolean,
-    required: true,
-  },
-  audioStream: {
-    type: Object,
-    required: false,
-  },
-});
+import useMedia from '@/hooks/useMedia';
 
 const {
   audioOutputDevice,
@@ -89,6 +72,15 @@ const {
   audioSetting,
   changeAudioSetting,
 } = useMediaStore();
+
+const {
+  audioInputs,
+  audioOutputs,
+  audioStream,
+  isLoading,
+  closeStream,
+  getStream,
+} = useMedia();
 
 const toggleSetting = (key, active) => {
   changeAudioSetting({ [key]: active });
@@ -148,12 +140,24 @@ const selectDevice = (type, value) => {
 };
 
 watchEffect(() => {
-  if (props.audioStream && canvas.value) {
-    visualizeAudioStream(props.audioStream);
+  if (audioStream.value && canvas.value) {
+    visualizeAudioStream(audioStream);
   }
+  console.log('watchEffect audio settings');
 });
+
+onMounted(() => {
+  getStream({
+    audio: {
+      deviceId: audioInputDevice,
+      ...audioSetting,
+    },
+  });
+});
+
 onUnmounted(() => {
   cancelAnimationFrame(reqFrame);
+  closeStream({ type: MediaType.Audio });
 });
 </script>
 

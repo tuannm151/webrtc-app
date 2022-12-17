@@ -84,7 +84,7 @@ export default class Peer {
     // }
   }
 
-  onChannelOpen() {}
+  onChannelOpen() { }
 
   _initDataChannel() {
     this.dc.onopen = () => {
@@ -92,13 +92,16 @@ export default class Peer {
     };
     this.dc.onmessage = (event) => {
       const message = JSON.parse(event.data);
-      console.log(message);
       const { type, data } = message;
       if (type === 'connection') {
         this.gotConnectionMessage(data);
+        return;
       }
+      this.gotPeerMessage(message);
     };
   }
+
+  gotPeerMessage = () => { }
 
   isChannelOpen() {
     return this.dc && this.dc.readyState === 'open';
@@ -198,5 +201,5 @@ export default class Peer {
       this.makingOffer = false;
     }
   };
-  gotStream = () => {};
+  gotStream = () => { };
 }

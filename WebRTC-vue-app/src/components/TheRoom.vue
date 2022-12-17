@@ -235,6 +235,7 @@ const handleSwitchStream = (data) => {
     });
   }
   // request new stream
+  console.log('switch-stream');
   pcManager.requestScreen({ socketId, streamId });
 };
 
