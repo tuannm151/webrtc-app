@@ -101,7 +101,7 @@ export default class Peer {
     };
   }
 
-  gotPeerMessage = () => { }
+  gotPeerMessage = () => { };
 
   isChannelOpen() {
     return this.dc && this.dc.readyState === 'open';
