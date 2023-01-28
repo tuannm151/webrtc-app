@@ -54,6 +54,13 @@ export default class PeerConnectionManager {
       this.onPeerDestroyed(message.SourceId);
     });
 
+    this.wsConn.on('JoinGroup', (payload) => {
+      const { type, message } = payload;
+      if (type === 'error') {
+        this.onJoinGroupFailed(message);
+      }
+    });
+
     this.wsConn.on('ChatMessage', (message, payload) => {
       const senderSocketId = message.SourceId;
       this.onReceivedChatMessage({ id: senderSocketId, data: payload });
@@ -74,6 +81,7 @@ export default class PeerConnectionManager {
   onRemoteStopStream = () => { };
   onStopSharingStream = () => { };
   onReceivedChatMessage = () => { };
+  onJoinGroupFailed = () => { };
 
   sendToAllChannels = (message) => {
     Object.values(this.connections).forEach(({ peer }) => {

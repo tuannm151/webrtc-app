@@ -14,41 +14,58 @@
             v-model="userName"
           />
         </div>
-        <button class="btn border-2 btn-outline btn-warning w-full">
+        <button
+          @click="toggleTab"
+          class="btn border-2 btn-outline btn-warning w-full"
+        >
           Tạo phòng mới
         </button>
         <button
-          @click="joinRoom"
+          @click="toggleTab"
           class="btn border-2 btn-outline btn-warning w-full"
         >
           Tham gia phòng
         </button>
+        <NewRoomModal v-if="isTabOpen" @close="toggleTab" @submit="joinRoom" />
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
+import NewRoomModal from './NewRoomModal.vue';
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { useUserStore } from '../store/userStore';
+import { useUserStore } from '../../store/userStore';
 
 const userName = ref(localStorage.getItem('UserName') || '');
 const userStore = useUserStore();
 const router = useRouter();
+const isTabOpen = ref(false);
 
-const joinRoom = () => {
+const setName = () => {
+  userStore.userName = userName.value || 'Ẩn danh';
+  // set user name to local storage
+  if (userName.value) {
+    localStorage.setItem('UserName', userName.value);
+  }
+};
+
+const joinRoom = ({ name, password }) => {
   try {
-    router.push('/room/123');
-    // set user name to store
-    userStore.userName = userName.value || 'Ẩn danh';
-    // set user name to local storage
-    if (userName.value) {
-      localStorage.setItem('UserName', userName.value);
+    let url = `/room/${name}`;
+    if (password) {
+      url += `?password=${password}`;
     }
+    setName();
+    router.push(url);
   } catch (error) {
     console.log(error);
   }
+};
+
+const toggleTab = () => {
+  isTabOpen.value = !isTabOpen.value;
 };
 </script>
 

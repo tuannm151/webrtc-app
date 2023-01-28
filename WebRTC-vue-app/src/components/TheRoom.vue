@@ -350,6 +350,16 @@ const initConn = async () => {
     });
     playConnectedSound();
   };
+  pcManager.onJoinGroupFailed = async (message) => {
+    console.log('onJoinGroupFailed', message);
+    toast.error(
+      'Tham gia phòng không thành công, vui lòng kiểm tra thông tin đầu vào!',
+      toastOptions
+    );
+    const delayMs = 2000;
+    await new Promise((resolve) => setTimeout(resolve, delayMs));
+    router.push('/');
+  };
   pcManager.onPeerStateChange = (id, state) => {
     console.log(state);
     peers.value = peers.value.map((p) => {
