@@ -28,16 +28,32 @@ namespace WS.Server
             var group = GetGroup(socket);
             var wsMessage = JsonConvert.DeserializeObject<WSMessage>(message);
             wsMessage.SourceId = socketId;
+            
             switch (wsMessage.ActionType)
             {
                 case MessageEnum.ActionType.JoinGroup:
                     if (String.IsNullOrEmpty(wsMessage.GroupName))
                     {
+                        _ = SendMessageAsync(wsMessage.SourceId, JsonConvert.SerializeObject(new WSMessage
+                        {
+                            ActionType = MessageEnum.ActionType.JoinGroup,
+                            Data = "{\r\n\"type\":\"error\",\r\n\"message\":\"missing agruments\"\r\n}"
+                        }));
                         return;
                     }
                     var res = JoinGroup(socket, wsMessage.GroupName, wsMessage.GroupSecret);
-                    if (!res) break;
+                    if (!res)
+                    {
+                        _ = SendMessageAsync(wsMessage.SourceId, JsonConvert.SerializeObject(new WSMessage
+                        {
+                            ActionType = MessageEnum.ActionType.JoinGroup,
+                            Data = "{\r\n\"type\":\"error\",\r\n\"message\":\"wrong credentials\"\r\n}"
+                        }));
+                        return;
+                    }
 
+           
+                    
                     /*var announceClient = new WSMessage
                     {
                         // send back to client to signal joined successfully
@@ -58,6 +74,7 @@ namespace WS.Server
                     _ = SendMessageAsyncGroup(socket, wsMessage.GroupName, JsonConvert.SerializeObject(announceGroup));
 
                     return;
+                              
                 case MessageEnum.ActionType.LeaveGroup:
                     LeaveGroup(socket);
                     return;
