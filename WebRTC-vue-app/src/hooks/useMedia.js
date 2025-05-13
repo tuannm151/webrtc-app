@@ -15,50 +15,62 @@ export default function useMedia({ init = false }) {
     audioOutputs.value = [];
     videoInputs.value = [];
     devices.forEach((device) => {
-      const { deviceId } = device;
-      switch (device.kind) {
-        case 'audioinput':
-          audioInputs.value.push({
-            label: device.label || `Microphone ${audioInputs.value.length + 1}`,
-            value: deviceId,
-          });
-          break;
-        case 'audiooutput':
-          audioOutputs.value.push({
-            label: device.label || `Speaker ${audioOutputs.value.length + 1}`,
-            value: deviceId,
-          });
-          break;
-        case 'videoinput':
-          videoInputs.value.push({
-            label: device.label || `Camera ${videoInputs.value.length + 1}`,
-            value: deviceId,
-          });
-          break;
+      try {
+        const { deviceId } = device;
+        switch (device.kind) {
+          case 'audioinput':
+            audioInputs.value.push({
+              label: device.label || `Microphone ${audioInputs.value.length + 1}`,
+              value: deviceId,
+            });
+            break;
+          case 'audiooutput':
+            audioOutputs.value.push({
+              label: device.label || `Speaker ${audioOutputs.value.length + 1}`,
+              value: deviceId,
+            });
+            break;
+          case 'videoinput':
+            videoInputs.value.push({
+              label: device.label || `Camera ${videoInputs.value.length + 1}`,
+              value: deviceId,
+            });
+            break;
+        }
+      }
+      catch (e) {
+        console.error(e);
+        error.value = e?.message || 'Error getting media devices';
       }
     });
   };
   const getStream = async (constraints) => {
-    const newStream = await navigator.mediaDevices.getUserMedia(constraints);
-    let newVideoStream = new MediaStream();
-    let newAudioStream = new MediaStream();
+    try {
+      const newStream = await navigator.mediaDevices.getUserMedia(constraints);
+      let newVideoStream = new MediaStream();
+      let newAudioStream = new MediaStream();
 
-    newStream.getTracks().forEach((track) => {
-      if (track.kind === 'video') {
-        newVideoStream.addTrack(track);
+      newStream.getTracks().forEach((track) => {
+        if (track.kind === 'video') {
+          newVideoStream.addTrack(track);
+        }
+        if (track.kind === 'audio') {
+          newAudioStream.addTrack(track);
+        }
+      });
+      if (newVideoStream.getTracks().length > 0) {
+        videoStream.value = newVideoStream;
       }
-      if (track.kind === 'audio') {
-        newAudioStream.addTrack(track);
+      if (newAudioStream.getTracks().length > 0) {
+        audioStream.value = newAudioStream;
       }
-    });
-    if (newVideoStream.getTracks().length > 0) {
-      videoStream.value = newVideoStream;
-    }
-    if (newAudioStream.getTracks().length > 0) {
-      audioStream.value = newAudioStream;
-    }
 
-    return newStream;
+      return newStream;
+    }
+    catch (e) {
+      console.error(e);
+      error.value = e?.message || 'Error getting media stream';
+    }
   };
 
   const closeAudioStream = () => {
@@ -95,7 +107,8 @@ export default function useMedia({ init = false }) {
     try {
       isLoading.value = true;
       if (init) {
-        await getStream({ audio: true, video: true });
+        await getStream({ audio: true });
+        await getStream({ video: true });
         closeStream();
       }
       await getDevices();
